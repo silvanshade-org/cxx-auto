@@ -58,7 +58,7 @@ impl CxxAutoArtifactInfo {
                 let ident = syn::Ident::new(descendant, span);
                 syn::parse_quote! {
                     #[path = #path]
-                    pub(crate) mod #ident;
+                    pub mod #ident;
                 }
             })
             .collect::<alloc::vec::Vec<syn::Item>>();
@@ -126,7 +126,7 @@ impl CxxAutoArtifactInfo {
                     let ident = syn::Ident::new(descendant, span);
                     syn::parse_quote! {
                         #[path = #path]
-                        pub(crate) mod #ident;
+                        pub mod #ident;
                     }
                 })
                 .collect::<alloc::vec::Vec<syn::Item>>();
