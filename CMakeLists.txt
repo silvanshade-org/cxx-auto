@@ -16,7 +16,7 @@ target_include_directories(cxx-auto PUBLIC
 )
 target_compile_options(cxx-auto PUBLIC
   -fno-rtti # needed to avoid "undefined reference to `typeinfo for [...]`" errors
-  -std=gnu++20
+  -std=gnu++23
   -Werror
   -Wall
   -Wextra
