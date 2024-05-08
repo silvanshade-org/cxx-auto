@@ -339,7 +339,7 @@ fn emit_impl_default(
         Some(syn::parse_quote! {
             impl #generics_binder #ident #generics {
                 #[inline]
-                pub(crate) fn default_new() -> impl ::cxx_auto::moveref::New<Output = #ident #generics> {
+                pub fn default_new() -> impl ::cxx_auto::moveref::New<Output = #ident #generics> {
                     unsafe {
                         ::cxx_auto::moveref::new::by_raw(move |this| {
                             let this = this.get_unchecked_mut().as_mut_ptr();
