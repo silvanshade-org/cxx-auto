@@ -23,6 +23,8 @@ mod processing;
 pub use crate::{cxx_auto_artifact_info::CxxAutoArtifactInfo, cxx_auto_entry::CxxAutoEntry, error::*};
 #[cfg(feature = "alloc")]
 pub use indexmap;
+pub use moveref;
+pub use static_assertions;
 
 pub mod ctypes {
     pub use crate::ffi::ctypes::{

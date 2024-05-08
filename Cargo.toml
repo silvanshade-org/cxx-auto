@@ -27,10 +27,12 @@ cxx = { version = "1.0", features = ["c++20"] }
 cxx-build = { version = "1.0", features = ["parallel"] }
 indexmap = { version = "2.0", features = ["serde"] }
 libc = "0.2"
+moveref = "0.0"
 proc-macro2 = "1.0"
 quote = "1.0"
 rust-format = { version = "0.3", features = ["token_stream"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
+static_assertions = { version = "1.1" }
 syn = { version = "2.0", features = ["full"] }
 walkdir = "2.3"

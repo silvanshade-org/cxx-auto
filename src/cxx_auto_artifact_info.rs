@@ -351,9 +351,9 @@ fn emit_impl_default(
         Some(syn::parse_quote! {
             impl #generics_binder #ident #generics {
                 #[inline]
-                pub(crate) fn default_new() -> impl ::moveref::New<Output = #ident #generics> {
+                pub(crate) fn default_new() -> impl ::cxx_auto::moveref::New<Output = #ident #generics> {
                     unsafe {
-                        ::moveref::new::by_raw(move |this| {
+                        ::cxx_auto::moveref::new::by_raw(move |this| {
                             let this = this.get_unchecked_mut().as_mut_ptr();
                             self::ffi::cxx_default_new(this);
                         })
@@ -396,7 +396,7 @@ fn emit_impl_moveit_copy_new(
 ) -> Option<syn::ItemImpl> {
     if info.is_rust_copy_new {
         Some(syn::parse_quote! {
-            impl #generics_binder ::moveref::CopyNew for #ident #generics {
+            impl #generics_binder ::cxx_auto::moveref::CopyNew for #ident #generics {
                 #[inline]
                 unsafe fn copy_new(that: &Self, this: ::core::pin::Pin<&mut ::core::mem::MaybeUninit<Self>>) {
                     let this = this.get_unchecked_mut().as_mut_ptr();
@@ -418,10 +418,10 @@ fn emit_impl_moveit_move_new(
 ) -> Option<syn::ItemImpl> {
     if info.is_rust_move_new {
         Some(syn::parse_quote! {
-            impl #generics_binder ::moveref::MoveNew for #ident #generics {
+            impl #generics_binder ::cxx_auto::moveref::MoveNew for #ident #generics {
                 #[inline]
                 unsafe fn move_new(
-                    that: ::core::pin::Pin<::moveref::MoveRef<'_, Self>>,
+                    that: ::core::pin::Pin<::cxx_auto::moveref::MoveRef<'_, Self>>,
                     this: ::core::pin::Pin<&mut ::core::mem::MaybeUninit<Self>>,
                 ) {
                     let this = this.get_unchecked_mut().as_mut_ptr();
@@ -631,14 +631,14 @@ fn emit_info_test_module(
     };
     let static_assert_is_copy: Option<syn::ItemMacro> = if info.is_rust_copy {
         Some(syn::parse_quote!(
-            ::static_assertions::assert_impl_all!(#ident #generics: ::core::marker::Copy);
+            ::cxx_auto::static_assertions::assert_impl_all!(#ident #generics: ::core::marker::Copy);
         ))
     } else {
         None
     };
     let static_assert_is_unpin: Option<syn::ItemMacro> = if info.is_rust_unpin {
         Some(syn::parse_quote!(
-            ::static_assertions::assert_impl_all!(#ident #generics: ::core::marker::Unpin);
+            ::cxx_auto::static_assertions::assert_impl_all!(#ident #generics: ::core::marker::Unpin);
         ))
     } else {
         None
