@@ -78,7 +78,6 @@ impl crate::ffi::ctypes::c_char {
     }
 
     #[must_use]
-    #[cfg(feature = "std")]
     #[inline]
     pub fn from_path(path: &std::path::Path) -> &[c_char] {
         use std::os::unix::ffi::OsStrExt;

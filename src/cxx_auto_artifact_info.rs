@@ -2,15 +2,14 @@ use proc_macro2::Span;
 use syn::punctuated::Punctuated;
 
 #[allow(clippy::struct_excessive_bools)]
-#[cfg(feature = "alloc")]
 pub struct CxxAutoArtifactInfo {
-    pub path_components: ::alloc::vec::Vec<&'static str>,
-    pub path_descendants: ::alloc::vec::Vec<&'static str>,
+    pub path_components: Vec<&'static str>,
+    pub path_descendants: Vec<&'static str>,
     pub cxx_include: &'static str,
     pub cxx_namespace: &'static str,
     pub cxx_name: &'static str,
     pub rust_name: &'static str,
-    pub lifetimes: ::indexmap::IndexMap<&'static str, ::alloc::vec::Vec<&'static str>>,
+    pub lifetimes: ::indexmap::IndexMap<&'static str, Vec<&'static str>>,
     pub align: usize,
     pub size: usize,
     pub cxx_has_operator_equal: bool,
@@ -37,7 +36,6 @@ pub struct CxxAutoArtifactInfo {
     pub is_rust_hash: bool,
 }
 
-#[cfg(feature = "alloc")]
 impl CxxAutoArtifactInfo {
     #[must_use]
     pub fn emit_file(&self, auto_out_dir: &::std::path::Path) -> syn::File {
@@ -61,7 +59,7 @@ impl CxxAutoArtifactInfo {
                     pub mod #ident;
                 }
             })
-            .collect::<alloc::vec::Vec<syn::Item>>();
+            .collect::<Vec<syn::Item>>();
         let item_struct = emit_struct(self, align, size, ident, generics_binder, generics);
         let item_impl_cxx_extern_type = emit_impl_cxx_extern_type(self, ident, generics_binder, generics);
         let item_impl_drop = emit_impl_drop(self, ident, generics_binder, generics);
@@ -103,7 +101,6 @@ impl CxxAutoArtifactInfo {
     /// - failure to create the output parent directory for the generated module
     /// - failure to run `rustfmt` on the generated module
     /// - failure to write the generated module to disk
-    #[cfg(feature = "std")]
     pub fn write_module_for_dir(
         auto_out_dir_root: &std::path::Path,
         path_components: &[&str],
@@ -129,10 +126,10 @@ impl CxxAutoArtifactInfo {
                         pub mod #ident;
                     }
                 })
-                .collect::<alloc::vec::Vec<syn::Item>>();
+                .collect::<Vec<syn::Item>>();
             syn::File {
                 shebang: None,
-                attrs: alloc::vec![],
+                attrs: vec![],
                 items,
             }
         };
@@ -148,7 +145,6 @@ impl CxxAutoArtifactInfo {
     /// - failure to create the output parent directory for the generated module
     /// - failure to run `rustfmt` on the generated module
     /// - failure to write the generated module to disk
-    #[cfg(feature = "std")]
     pub fn write_module_for_file(&self, auto_out_dir_root: &::std::path::Path) -> crate::BoxResult<()> {
         use quote::ToTokens;
         use rust_format::Formatter;
@@ -165,7 +161,6 @@ impl CxxAutoArtifactInfo {
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_struct(
     info: &CxxAutoArtifactInfo,
     align: &proc_macro2::Literal,
@@ -181,7 +176,7 @@ fn emit_struct(
     let field_lifetimes = field_lifetimes(generics);
     let fields = syn::FieldsNamed {
         brace_token: syn::token::Brace::default(),
-        named: ::alloc::vec![
+        named: vec![
             Some(field_layout),
             field_neither_send_nor_sync,
             field_pinned,
@@ -198,7 +193,6 @@ fn emit_struct(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_derive_attribute(info: &CxxAutoArtifactInfo) -> Option<syn::Attribute> {
     if info.is_rust_copy {
         Some(syn::parse_quote!(#[derive(Clone, Copy)]))
@@ -207,10 +201,9 @@ fn emit_derive_attribute(info: &CxxAutoArtifactInfo) -> Option<syn::Attribute> {
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_field(name: &str, ty: syn::Type) -> syn::Field {
     syn::Field {
-        attrs: ::alloc::vec![],
+        attrs: vec![],
         vis: syn::Visibility::Inherited,
         mutability: syn::FieldMutability::None,
         ident: Some(syn::Ident::new(name, Span::call_site())),
@@ -219,7 +212,6 @@ fn emit_field(name: &str, ty: syn::Type) -> syn::Field {
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_generics(info: &CxxAutoArtifactInfo, all_static: bool) -> (syn::Generics, syn::Generics) {
     #![allow(clippy::similar_names)]
     let span = Span::call_site();
@@ -228,12 +220,12 @@ fn emit_generics(info: &CxxAutoArtifactInfo, all_static: bool) -> (syn::Generics
     for (name, bounds) in &info.lifetimes {
         let name = if all_static { "static" } else { name };
 
-        let lifetime = syn::Lifetime::new(&::alloc::format!("'{name}"), span);
+        let lifetime = syn::Lifetime::new(&format!("'{name}"), span);
         let lifetime_param = syn::LifetimeParam::new(lifetime);
 
         let mut lifetime_param_binder = lifetime_param.clone();
         for bound in bounds {
-            let lifetime = syn::Lifetime::new(&::alloc::format!("'{bound}"), span);
+            let lifetime = syn::Lifetime::new(&format!("'{bound}"), span);
             lifetime_param_binder.bounds.push_value(lifetime);
         }
 
@@ -267,14 +259,13 @@ fn emit_generics(info: &CxxAutoArtifactInfo, all_static: bool) -> (syn::Generics
     )
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_cxx_extern_type(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
     generics_binder: &syn::Generics,
     generics: &syn::Generics,
 ) -> syn::ItemImpl {
-    let type_id = ::alloc::format!("{}::{}", info.cxx_namespace, info.cxx_name);
+    let type_id = format!("{}::{}", info.cxx_namespace, info.cxx_name);
     let kind: syn::Type = if info.is_rust_cxx_extern_type_trivial {
         syn::parse_quote!(::cxx::kind::Trivial)
     } else {
@@ -288,7 +279,6 @@ fn emit_impl_cxx_extern_type(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_drop(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -312,7 +302,6 @@ fn emit_impl_drop(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_debug(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -340,7 +329,6 @@ fn emit_impl_debug(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_default(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -366,7 +354,6 @@ fn emit_impl_default(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_display(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -387,7 +374,6 @@ fn emit_impl_display(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_moveit_copy_new(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -409,7 +395,6 @@ fn emit_impl_moveit_copy_new(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_moveit_move_new(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -435,7 +420,6 @@ fn emit_impl_moveit_move_new(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_partial_eq(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -468,7 +452,6 @@ fn emit_impl_partial_eq(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_eq(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -484,7 +467,6 @@ fn emit_impl_eq(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_partial_ord(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -571,7 +553,6 @@ fn emit_impl_partial_ord(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_ord(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -593,7 +574,6 @@ fn emit_impl_ord(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_impl_hash(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -618,7 +598,6 @@ fn emit_impl_hash(
     }
 }
 
-#[cfg(feature = "alloc")]
 fn emit_info_test_module(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
@@ -665,7 +644,6 @@ fn emit_info_test_module(
 }
 
 #[allow(clippy::too_many_lines)]
-#[cfg(feature = "alloc")]
 fn emit_item_mod_cxx_bridge(info: &CxxAutoArtifactInfo, ident: &syn::Ident, generics: &syn::Generics) -> syn::ItemMod {
     let cxx_include = &info.cxx_include;
     let cxx_namespace = &info.cxx_namespace;
@@ -816,14 +794,12 @@ fn emit_ref_type_from_lifetime(generic_param: &syn::GenericParam) -> Option<syn:
     }
 }
 
-#[cfg(feature = "alloc")]
 fn field_layout(size: &proc_macro2::Literal) -> syn::Field {
     let name = "_layout";
     let ty = syn::parse_quote!([u8; #size]);
     emit_field(name, ty)
 }
 
-#[cfg(feature = "alloc")]
 fn field_neither_send_nor_sync(info: &CxxAutoArtifactInfo) -> Option<syn::Field> {
     let is_neither_send_nor_sync = !info.is_rust_send && !info.is_rust_sync;
     if is_neither_send_nor_sync {
@@ -835,7 +811,6 @@ fn field_neither_send_nor_sync(info: &CxxAutoArtifactInfo) -> Option<syn::Field>
     }
 }
 
-#[cfg(feature = "alloc")]
 fn field_pinned(info: &CxxAutoArtifactInfo) -> Option<syn::Field> {
     if info.is_rust_unpin {
         None
@@ -846,7 +821,6 @@ fn field_pinned(info: &CxxAutoArtifactInfo) -> Option<syn::Field> {
     }
 }
 
-#[cfg(feature = "alloc")]
 fn field_lifetimes(generics: &syn::Generics) -> Option<syn::Field> {
     let ref_types = emit_refs_from_lifetimes(generics);
     if ref_types.is_empty() {

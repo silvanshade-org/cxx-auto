@@ -1,6 +1,5 @@
 use serde::Deserialize;
 
-#[cfg(feature = "alloc")]
 #[derive(Deserialize)]
 pub struct CxxAutoEntry<'ctx> {
     cxx_include: &'ctx str,
@@ -10,10 +9,9 @@ pub struct CxxAutoEntry<'ctx> {
     cxx_name: Option<&'ctx str>,
     rust_name: &'ctx str,
     #[serde(default)]
-    rust_lifetimes: ::indexmap::IndexMap<&'ctx str, ::alloc::vec::Vec<&'ctx str>>,
+    rust_lifetimes: ::indexmap::IndexMap<&'ctx str, Vec<&'ctx str>>,
 }
 
-#[cfg(feature = "alloc")]
 impl<'ctx> CxxAutoEntry<'ctx> {
     #[must_use]
     pub fn cxx_name(&self) -> &str {
@@ -22,21 +20,21 @@ impl<'ctx> CxxAutoEntry<'ctx> {
 
     pub(crate) fn emit_items_write_module_for_file<'a, 'b>(
         &self,
-        path_components: impl Iterator<Item = &'a ::alloc::string::String>,
-        path_descendants: impl Iterator<Item = &'b ::alloc::string::String>,
-    ) -> ::alloc::vec::Vec<syn::ItemFn> {
+        path_components: impl Iterator<Item = &'a String>,
+        path_descendants: impl Iterator<Item = &'b String>,
+    ) -> Vec<syn::ItemFn> {
         let cxx_include = self.cxx_include;
         let cxx_namespace = self.cxx_namespace;
         let cxx_name = self.cxx_name();
         let rust_name = self.rust_name;
         let lifetimes = {
-            let mut exprs = ::alloc::vec::Vec::<syn::Expr>::new();
+            let mut exprs = Vec::<syn::Expr>::new();
             for (lifetime, bounds) in &self.rust_lifetimes {
                 exprs.push(syn::parse_quote!((#lifetime, vec![#(#bounds),*])));
             }
             exprs
         };
-        ::alloc::vec![
+        vec![
             syn::parse_quote! {
                 fn artifact_info() -> ::cxx_auto::CxxAutoArtifactInfo {
                     let path_components = vec![#(#path_components),*];

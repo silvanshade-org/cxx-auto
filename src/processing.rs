@@ -1,10 +1,8 @@
-#[cfg(feature = "alloc")]
 use crate::BoxResult;
 
 use proc_macro2::Span;
 use quote::ToTokens;
 use rust_format::Formatter;
-#[cfg(feature = "std")]
 use std::collections::BTreeSet;
 
 pub(crate) fn process_src_auto_module(
@@ -14,7 +12,7 @@ pub(crate) fn process_src_auto_module(
 ) -> BoxResult<()> {
     let cfg_dir_walker = walkdir::WalkDir::new(cfg_dir).min_depth(1);
     let skip_paths = std::collections::BTreeSet::new();
-    let mut walked_path_components = ::alloc::vec::Vec::new();
+    let mut walked_path_components = Vec::new();
 
     process_src_auto_sub_module(
         project_dir,
@@ -28,7 +26,7 @@ pub(crate) fn process_src_auto_module(
 
     let contents = {
         let mut path_descendants = BTreeSet::new();
-        let mut item_mods = ::alloc::vec![];
+        let mut item_mods = vec![];
         emit_item_mods_for_path_descendants(
             project_dir,
             out_dir,
@@ -37,9 +35,9 @@ pub(crate) fn process_src_auto_module(
             &mut path_descendants,
             &mut item_mods,
         )?;
-        let item_write_module = emit_item_write_module_for_dir(&::alloc::vec![], &path_descendants);
+        let item_write_module = emit_item_write_module_for_dir(&vec![], &path_descendants);
         let item_fn_process_artifact_infos =
-            emit_item_fn_process_artifact_infos(([::alloc::vec![]]).iter().chain(walked_path_components.iter()));
+            emit_item_fn_process_artifact_infos(([vec![]]).iter().chain(walked_path_components.iter()));
         let file: syn::File = syn::parse_quote! {
             #(#item_mods)*
             #item_write_module
@@ -53,13 +51,12 @@ pub(crate) fn process_src_auto_module(
     Ok(())
 }
 
-#[cfg(feature = "std")]
 fn process_src_auto_sub_module(
     project_dir: &std::path::Path,
     out_dir: &std::path::Path,
     mut cfg_dir_walker: impl Iterator<Item = walkdir::Result<walkdir::DirEntry>>,
     mut skip_paths: std::collections::BTreeSet<std::path::PathBuf>,
-    walked_path_file_components: &mut ::alloc::vec::Vec<::alloc::vec::Vec<::alloc::string::String>>,
+    walked_path_file_components: &mut Vec<Vec<String>>,
 ) -> BoxResult<()> {
     if let Some(entry) = cfg_dir_walker.next().transpose()? {
         let path = entry.path();
@@ -74,7 +71,7 @@ fn process_src_auto_sub_module(
 
             let path_components = relativized_components_from_path(path)?;
             let mut path_descendants = BTreeSet::new();
-            let mut item_mods = ::alloc::vec![];
+            let mut item_mods = vec![];
 
             if let Some(path) = &path_dir {
                 emit_item_mods_for_path_descendants(
@@ -87,8 +84,8 @@ fn process_src_auto_sub_module(
                 )?;
             }
 
-            let mut items_write_module: ::alloc::vec::Vec<syn::ItemFn> = ::alloc::vec![];
-            let mut item_mod_cxx_bridge: ::alloc::vec::Vec<syn::Item> = ::alloc::vec![];
+            let mut items_write_module: Vec<syn::ItemFn> = vec![];
+            let mut item_mod_cxx_bridge: Vec<syn::Item> = vec![];
 
             if let Some(path) = &path_file {
                 skip_paths.insert(path.clone());
@@ -102,7 +99,7 @@ fn process_src_auto_sub_module(
             }
 
             let auto_sub_module_path = out_dir.join(
-                [::alloc::string::String::from("auto")]
+                [String::from("auto")]
                     .iter()
                     .chain(&path_components)
                     .collect::<std::path::PathBuf>(),
@@ -137,8 +134,8 @@ fn emit_item_mods_for_path_descendants(
     out_dir: &std::path::Path,
     path: &std::path::Path,
     skip_paths: &mut BTreeSet<std::path::PathBuf>,
-    path_descendants: &mut BTreeSet<::alloc::string::String>,
-    items: &mut ::alloc::vec::Vec<syn::ItemMod>,
+    path_descendants: &mut BTreeSet<String>,
+    items: &mut Vec<syn::ItemMod>,
 ) -> BoxResult<()> {
     skip_paths.insert(path.to_path_buf());
     find_immediate_path_descendants(path, path_descendants)?;
@@ -157,11 +154,7 @@ fn emit_item_mods_for_path_descendants(
     Ok(())
 }
 
-#[cfg(feature = "std")]
-fn emit_item_write_module_for_dir(
-    path_components: &::alloc::vec::Vec<::alloc::string::String>,
-    path_descendants: &BTreeSet<::alloc::string::String>,
-) -> syn::ItemFn {
+fn emit_item_write_module_for_dir(path_components: &Vec<String>, path_descendants: &BTreeSet<String>) -> syn::ItemFn {
     syn::parse_quote! {
         pub(crate) fn write_module(out_dir: &::std::path::Path) -> ::cxx_auto::BoxResult<()> {
             let path_components = &[#(#path_components),*];
@@ -171,9 +164,8 @@ fn emit_item_write_module_for_dir(
     }
 }
 
-#[cfg(feature = "std")]
 fn emit_item_fn_process_artifact_infos<'a>(
-    walked_path_components: impl Iterator<Item = &'a ::alloc::vec::Vec<::alloc::string::String>>,
+    walked_path_components: impl Iterator<Item = &'a Vec<String>>,
 ) -> syn::ItemFn {
     let span = Span::call_site();
     let items = walked_path_components.map(|path_components| -> syn::Stmt {
@@ -200,11 +192,7 @@ fn emit_item_fn_process_artifact_infos<'a>(
     }
 }
 
-#[cfg(feature = "std")]
-fn find_immediate_path_descendants(
-    path: &std::path::Path,
-    path_descendants: &mut BTreeSet<::alloc::string::String>,
-) -> BoxResult<()> {
+fn find_immediate_path_descendants(path: &std::path::Path, path_descendants: &mut BTreeSet<String>) -> BoxResult<()> {
     for result in walkdir::WalkDir::new(path).min_depth(1).max_depth(1) {
         let entry = result?;
         if let Some(file_stem) = entry
@@ -213,7 +201,7 @@ fn find_immediate_path_descendants(
             .map(|s| {
                 s.to_os_string()
                     .into_string()
-                    .map_err(|err| ::alloc::format!("Failed to convert to String: {err:?}"))
+                    .map_err(|err| format!("Failed to convert to String: {err:?}"))
             })
             .transpose()?
         {
@@ -223,8 +211,7 @@ fn find_immediate_path_descendants(
     Ok(())
 }
 
-#[cfg(feature = "std")]
-fn relativized_components_from_path(path: &std::path::Path) -> BoxResult<::alloc::vec::Vec<::alloc::string::String>> {
+fn relativized_components_from_path(path: &std::path::Path) -> BoxResult<Vec<String>> {
     let path_components = path
         .with_extension("")
         .components()
@@ -235,13 +222,12 @@ fn relativized_components_from_path(path: &std::path::Path) -> BoxResult<::alloc
                 .as_os_str()
                 .to_os_string()
                 .into_string()
-                .map_err(|err| ::alloc::format!("Failed to convert to String: {err:?}"))
+                .map_err(|err| format!("Failed to convert to String: {err:?}"))
         })
-        .collect::<Result<::alloc::vec::Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(path_components)
 }
 
-#[cfg(feature = "std")]
 fn write_auto_sub_module(
     path: &std::path::Path,
     item_mods: &[syn::ItemMod],

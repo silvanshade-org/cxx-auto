@@ -1,12 +1,5 @@
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
-#![no_std]
-
-#[cfg(feature = "alloc")]
-extern crate alloc;
-
-#[cfg(feature = "std")]
-extern crate std;
 
 mod cxx_auto_artifact_info;
 mod cxx_auto_entry;
@@ -19,9 +12,7 @@ mod gen {
 }
 mod processing;
 
-#[cfg(feature = "alloc")]
 pub use crate::{cxx_auto_artifact_info::CxxAutoArtifactInfo, cxx_auto_entry::CxxAutoEntry, error::*};
-#[cfg(feature = "alloc")]
 pub use indexmap;
 pub use moveref;
 pub use static_assertions;
@@ -48,7 +39,6 @@ pub mod ctypes {
 /// # Errors
 ///
 /// Will return `Err` if auto-generation of the C++ bindings fails.
-#[cfg(feature = "std")]
 pub fn process_artifacts(
     project_dir: &std::path::Path,
     out_dir: &std::path::Path,
