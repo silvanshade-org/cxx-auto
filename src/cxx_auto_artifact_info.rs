@@ -333,7 +333,7 @@ fn emit_impl_debug(
         syn::parse_quote! {
             impl #generics_binder ::core::fmt::Debug for #ident #generics {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_struct(#name).finish()
+                    f.debug_struct(#name).finish_non_exhaustive()
                 }
             }
         }
