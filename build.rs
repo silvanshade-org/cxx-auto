@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 type BoxError = Box<dyn std::error::Error + Send + Sync + 'static>;
 type BoxResult<T> = Result<T, BoxError>;
 
@@ -16,7 +18,10 @@ fn main() -> BoxResult<()> {
         .flag_if_supported("-Wno-nested-anon-types")
         .flag_if_supported("-Wno-unused-parameter")
         .try_compile("cxx-auto")?;
-    println!("cargo:rerun-if-changed=cxx");
-    println!("cargo:rerun-if-changed=gen");
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR")?);
+    let cxxbridge = out_dir.join("cxxbridge");
+    println!("cargo::metadata=cxxbridge={}", cxxbridge.display());
+    println!("cargo::rerun-if-changed=cxx");
+    println!("cargo::rerun-if-changed=gen");
     Ok(())
 }

@@ -93,7 +93,7 @@ fn process_src_auto_sub_module(
                 let data = serde_json::from_str::<crate::CxxAutoEntry>(&text)?;
                 items_write_module =
                     data.emit_items_write_module_for_file(path_components.iter(), path_descendants.iter());
-                item_mod_cxx_bridge.extend(data.emit_item_mod_cxx_bridge());
+                item_mod_cxx_bridge.extend(vec![data.emit_item_mod_cxx_bridge()]);
             } else {
                 items_write_module.push(emit_item_write_module_for_dir(&path_components, &path_descendants));
             }
