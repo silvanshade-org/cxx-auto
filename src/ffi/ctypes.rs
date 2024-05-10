@@ -4,24 +4,24 @@
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_char {
-    pub(crate) value: ::core::ffi::c_char,
+    pub(crate) value: core::ffi::c_char,
 }
 
-impl ::core::fmt::Debug for c_char {
+impl core::fmt::Debug for c_char {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         #[allow(clippy::cast_sign_loss)]
-        let value = self.value as u8 as ::core::primitive::char;
-        ::core::fmt::Debug::fmt(&value, f)
+        let value = self.value as u8 as core::primitive::char;
+        core::fmt::Debug::fmt(&value, f)
     }
 }
 
-impl ::core::fmt::Display for c_char {
+impl core::fmt::Display for c_char {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         #[allow(clippy::cast_sign_loss)]
-        let value = self.value as u8 as ::core::primitive::char;
-        ::core::fmt::Display::fmt(&value, f)
+        let value = self.value as u8 as core::primitive::char;
+        core::fmt::Display::fmt(&value, f)
     }
 }
 
@@ -30,32 +30,32 @@ unsafe impl cxx::ExternType for c_char {
     type Kind = cxx::kind::Trivial;
 }
 
-impl From<::core::ffi::c_char> for c_char {
+impl From<core::ffi::c_char> for c_char {
     #[inline]
-    fn from(value: ::core::ffi::c_char) -> Self {
+    fn from(value: core::ffi::c_char) -> Self {
         c_char { value }
     }
 }
 
-impl From<c_char> for ::core::ffi::c_char {
+impl From<c_char> for core::ffi::c_char {
     #[inline]
     fn from(wrapper: c_char) -> Self {
         wrapper.value
     }
 }
 
-impl From<::core::primitive::char> for c_char {
+impl From<core::primitive::char> for c_char {
     #[inline]
-    fn from(value: ::core::primitive::char) -> Self {
-        c_char::from(value as ::core::ffi::c_char)
+    fn from(value: core::primitive::char) -> Self {
+        c_char::from(value as core::ffi::c_char)
     }
 }
 
-impl From<c_char> for ::core::primitive::char {
+impl From<c_char> for core::primitive::char {
     #[inline]
     fn from(wrapper: c_char) -> Self {
         #[allow(clippy::cast_sign_loss)]
-        let value = wrapper.value as u8 as ::core::primitive::char;
+        let value = wrapper.value as u8 as core::primitive::char;
         value
     }
 }
@@ -66,7 +66,7 @@ impl crate::ffi::ctypes::c_char {
     pub fn from_bytes(bytes: &[u8]) -> &[c_char] {
         let data = bytes.as_ptr().cast::<c_char>();
         let len = bytes.len();
-        unsafe { ::core::slice::from_raw_parts(data, len) }
+        unsafe { core::slice::from_raw_parts(data, len) }
     }
 
     #[must_use]
@@ -74,7 +74,7 @@ impl crate::ffi::ctypes::c_char {
     pub fn into_bytes(slice: &[c_char]) -> &[u8] {
         let data = slice.as_ptr().cast::<u8>();
         let len = slice.len();
-        unsafe { ::core::slice::from_raw_parts(data, len) }
+        unsafe { core::slice::from_raw_parts(data, len) }
     }
 
     #[must_use]
@@ -98,13 +98,13 @@ impl crate::ffi::ctypes::c_char {
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_int {
-    pub(crate) value: ::core::ffi::c_int,
+    pub(crate) value: core::ffi::c_int,
 }
 
-impl ::core::fmt::Display for c_int {
+impl core::fmt::Display for c_int {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
@@ -113,13 +113,13 @@ impl ::core::fmt::Display for c_int {
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_long {
-    pub(crate) value: ::core::ffi::c_long,
+    pub(crate) value: core::ffi::c_long,
 }
 
-impl ::core::fmt::Display for c_long {
+impl core::fmt::Display for c_long {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
@@ -128,13 +128,13 @@ impl ::core::fmt::Display for c_long {
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_longlong {
-    pub(crate) value: ::core::ffi::c_longlong,
+    pub(crate) value: core::ffi::c_longlong,
 }
 
-impl ::core::fmt::Display for c_longlong {
+impl core::fmt::Display for c_longlong {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
@@ -142,23 +142,23 @@ impl ::core::fmt::Display for c_longlong {
 #[derive(Copy, Clone, Default, Eq, PartialEq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize)]
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
-pub struct c_schar(::core::ffi::c_schar);
+pub struct c_schar(core::ffi::c_schar);
 
 unsafe impl cxx::ExternType for c_schar {
     type Id = cxx::type_id!("c_schar");
     type Kind = cxx::kind::Trivial;
 }
 
-impl From<c_schar> for ::core::ffi::c_schar {
+impl From<c_schar> for core::ffi::c_schar {
     #[inline]
     fn from(value: c_schar) -> Self {
         value.0
     }
 }
 
-impl From<::core::ffi::c_schar> for c_schar {
+impl From<core::ffi::c_schar> for c_schar {
     #[inline]
-    fn from(value: ::core::ffi::c_schar) -> Self {
+    fn from(value: core::ffi::c_schar) -> Self {
         c_schar(value)
     }
 }
@@ -168,13 +168,13 @@ impl From<::core::ffi::c_schar> for c_schar {
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_short {
-    pub(crate) value: ::core::ffi::c_short,
+    pub(crate) value: core::ffi::c_short,
 }
 
-impl ::core::fmt::Display for c_short {
+impl core::fmt::Display for c_short {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
@@ -183,13 +183,13 @@ impl ::core::fmt::Display for c_short {
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_uchar {
-    pub(crate) value: ::core::ffi::c_uchar,
+    pub(crate) value: core::ffi::c_uchar,
 }
 
-impl ::core::fmt::Display for c_uchar {
+impl core::fmt::Display for c_uchar {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
@@ -198,13 +198,13 @@ impl ::core::fmt::Display for c_uchar {
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_uint {
-    pub(crate) value: ::core::ffi::c_uint,
+    pub(crate) value: core::ffi::c_uint,
 }
 
-impl ::core::fmt::Display for c_uint {
+impl core::fmt::Display for c_uint {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
@@ -213,13 +213,13 @@ impl ::core::fmt::Display for c_uint {
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_ulong {
-    pub(crate) value: ::core::ffi::c_ulong,
+    pub(crate) value: core::ffi::c_ulong,
 }
 
-impl ::core::fmt::Display for c_ulong {
+impl core::fmt::Display for c_ulong {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
@@ -228,13 +228,13 @@ impl ::core::fmt::Display for c_ulong {
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_ulonglong {
-    pub(crate) value: ::core::ffi::c_ulonglong,
+    pub(crate) value: core::ffi::c_ulonglong,
 }
 
-impl ::core::fmt::Display for c_ulonglong {
+impl core::fmt::Display for c_ulonglong {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
@@ -243,28 +243,28 @@ impl ::core::fmt::Display for c_ulonglong {
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_ushort {
-    pub(crate) value: ::core::ffi::c_ushort,
+    pub(crate) value: core::ffi::c_ushort,
 }
 
-impl ::core::fmt::Display for c_ushort {
+impl core::fmt::Display for c_ushort {
     #[inline]
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
 #[allow(non_camel_case_types)]
 #[repr(transparent)]
-pub struct c_void(::core::ffi::c_void);
+pub struct c_void(core::ffi::c_void);
 
-impl From<::core::ffi::c_void> for c_void {
+impl From<core::ffi::c_void> for c_void {
     #[inline]
-    fn from(value: ::core::ffi::c_void) -> Self {
+    fn from(value: core::ffi::c_void) -> Self {
         c_void(value)
     }
 }
 
-impl From<c_void> for ::core::ffi::c_void {
+impl From<c_void> for core::ffi::c_void {
     #[inline]
     fn from(value: c_void) -> Self {
         value.0
@@ -279,15 +279,15 @@ pub struct c_off_t {
     pub(crate) value: libc::off_t,
 }
 
-impl ::core::fmt::Debug for c_off_t {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.value, f)
+impl core::fmt::Debug for c_off_t {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(&self.value, f)
     }
 }
 
-impl ::core::fmt::Display for c_off_t {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+impl core::fmt::Display for c_off_t {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
@@ -304,15 +304,15 @@ pub struct c_time_t {
     pub(crate) value: libc::time_t,
 }
 
-impl ::core::fmt::Debug for c_time_t {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Debug::fmt(&self.value, f)
+impl core::fmt::Debug for c_time_t {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(&self.value, f)
     }
 }
 
-impl ::core::fmt::Display for c_time_t {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        ::core::fmt::Display::fmt(&self.value, f)
+impl core::fmt::Display for c_time_t {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Display::fmt(&self.value, f)
     }
 }
 
