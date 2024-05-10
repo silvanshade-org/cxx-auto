@@ -31,124 +31,124 @@ using c_time_t = time_t;
 
 namespace cxx_auto::detection {
 template<typename T, typename... U>
-concept same_as_any_of = (std::same_as<T, U> or ...);
+concept same_as_any_of = (::std::same_as<T, U> or ...);
 
 template<typename T>
 concept has_operator_equal = requires(T const& lhs, T const& rhs) {
-  { lhs == rhs } -> std::same_as<bool>;
+  { lhs == rhs } -> ::std::same_as<bool>;
 };
 
 template<typename T>
 concept has_operator_not_equal = requires(T const& lhs, T const& rhs) {
-  { lhs != rhs } -> std::same_as<bool>;
+  { lhs != rhs } -> ::std::same_as<bool>;
 };
 
 template<typename T>
 concept has_operator_less_than = requires(T const& lhs, T const& rhs) {
-  { lhs < rhs } -> std::same_as<bool>;
+  { lhs < rhs } -> ::std::same_as<bool>;
 };
 
 template<typename T>
 concept has_operator_less_than_or_equal = requires(T const& lhs, T const& rhs) {
-  { lhs <= rhs } -> std::same_as<bool>;
+  { lhs <= rhs } -> ::std::same_as<bool>;
 };
 
 template<typename T>
 concept has_operator_greater_than = requires(T const& lhs, T const& rhs) {
-  { lhs > rhs } -> std::same_as<bool>;
+  { lhs > rhs } -> ::std::same_as<bool>;
 };
 
 template<typename T>
 concept has_operator_greater_than_or_equal = requires(T const& lhs, T const& rhs) {
-  { lhs >= rhs } -> std::same_as<bool>;
+  { lhs >= rhs } -> ::std::same_as<bool>;
 };
 
 template<typename T>
 concept has_operator_three_way_comparison = requires(T const& lhs, T const& rhs) {
-  requires same_as_any_of<decltype(lhs <=> rhs), std::partial_ordering, std::strong_ordering>;
+  requires same_as_any_of<decltype(lhs <=> rhs), ::std::partial_ordering, ::std::strong_ordering>;
 };
 
 template<typename T>
 concept is_std_hashable = requires(T const& arg) {
-  { std::hash<T> {}(arg) } -> std::same_as<std::size_t>;
+  { ::std::hash<T> {}(arg) } -> ::std::same_as<::std::size_t>;
 };
 
 template<typename T>
 concept has_operator_std_string = requires(T const& arg) {
-  { arg.operator std::string() } -> std::same_as<std::string>;
+  { arg.operator ::std::string() } -> ::std::same_as<::std::string>;
 };
 
 template<typename T>
 concept has_operator_std_string_view = requires(T const& arg) {
-  { arg.operator std::string_view() } -> std::same_as<std::string_view>;
+  { arg.operator ::std::string_view() } -> ::std::same_as<::std::string_view>;
 };
 
 template<typename T>
 concept has_to_string = requires(T const& arg) {
-  { std::to_string(arg) } -> std::same_as<std::string>;
+  { ::std::to_string(arg) } -> ::std::same_as<::std::string>;
 };
 
 template<typename T>
-concept has_operator_ostream_left_shift = requires(T const& arg, std::ostream& os) {
-  { os << arg } -> std::same_as<std::ostream&>;
+concept has_operator_ostream_left_shift = requires(T const& arg, ::std::ostream& os) {
+  { os << arg } -> ::std::same_as<::std::ostream&>;
 };
 
 template<typename T, typename It>
 concept is_constructible_from_iterator = requires(It first, It last) {
-  requires std::input_iterator<It>;
-  { T { first, last } } -> std::same_as<T>;
+  requires ::std::input_iterator<It>;
+  { T { first, last } } -> ::std::same_as<T>;
 };
 
 template<typename T>
-concept is_iterable = std::ranges::range<T>;
+concept is_iterable = ::std::ranges::range<T>;
 
 template<typename T, typename V>
 concept is_input_iterable = requires {
-  requires std::ranges::input_range<T>;
-  requires std::same_as<std::iter_value_t<std::ranges::iterator_t<T>>, std::remove_reference_t<V>>;
+  requires ::std::ranges::input_range<T>;
+  requires ::std::same_as<::std::iter_value_t<::std::ranges::iterator_t<T>>, ::std::remove_reference_t<V>>;
 };
 
 template<typename T>
 concept is_input_copy_iterator = requires {
-  requires std::input_iterator<T>;
-  requires std::same_as<std::iter_reference_t<T>, std::add_lvalue_reference_t<std::iter_value_t<T>>>;
+  requires ::std::input_iterator<T>;
+  requires ::std::same_as<::std::iter_reference_t<T>, ::std::add_lvalue_reference_t<::std::iter_value_t<T>>>;
 };
 
 template<typename T>
 concept is_input_move_iterator = requires {
-  requires std::input_iterator<T>;
-  requires std::same_as<std::iter_reference_t<T>, std::add_rvalue_reference_t<std::iter_value_t<T>>>;
+  requires ::std::input_iterator<T>;
+  requires ::std::same_as<::std::iter_reference_t<T>, ::std::add_rvalue_reference_t<::std::iter_value_t<T>>>;
 };
 } // namespace cxx_auto::detection
 
 namespace cxx_auto {
 template<typename T, typename... Args>
-concept cxx_is_constructible = std::is_constructible_v<T, Args...>;
+concept cxx_is_constructible = ::std::is_constructible_v<T, Args...>;
 
 template<typename T>
-concept cxx_is_default_constructible = std::is_default_constructible_v<T>;
+concept cxx_is_default_constructible = ::std::is_default_constructible_v<T>;
 
 template<typename T>
-concept cxx_is_copy_constructible = std::is_copy_constructible_v<T>;
+concept cxx_is_copy_constructible = ::std::is_copy_constructible_v<T>;
 
 template<typename T>
-concept cxx_is_move_constructible = std::is_move_constructible_v<T>;
+concept cxx_is_move_constructible = ::std::is_move_constructible_v<T>;
 
 template<typename T>
-concept cxx_is_destructible = std::is_destructible_v<T>;
+concept cxx_is_destructible = ::std::is_destructible_v<T>;
 
 template<typename T>
-concept cxx_is_trivially_copyable = std::is_trivially_copyable_v<T>;
+concept cxx_is_trivially_copyable = ::std::is_trivially_copyable_v<T>;
 
 template<typename T>
-concept cxx_is_trivially_movable = std::is_trivially_move_constructible_v<T>
-                               and std::is_trivially_destructible_v<T>;
+concept cxx_is_trivially_movable = ::std::is_trivially_move_constructible_v<T>
+                               and ::std::is_trivially_destructible_v<T>;
 
 template<typename T>
-concept cxx_is_trivially_destructible = std::is_trivially_destructible_v<T>;
+concept cxx_is_trivially_destructible = ::std::is_trivially_destructible_v<T>;
 
 template<typename T>
-concept cxx_is_equality_comparable = std::equality_comparable<T>;
+concept cxx_is_equality_comparable = ::std::equality_comparable<T>;
 
 template<typename T>
 concept cxx_has_operator_equal = detection::has_operator_equal<T>;
@@ -178,7 +178,7 @@ template<typename T>
 concept cxx_is_partially_ordered = cxx_has_operator_three_way_comparison<T>;
 
 template<typename T>
-concept cxx_is_totally_ordered = std::totally_ordered<T>;
+concept cxx_is_totally_ordered = ::std::totally_ordered<T>;
 
 template<typename T>
 concept cxx_is_hashable = detection::is_std_hashable<T>;
@@ -376,14 +376,14 @@ concept rust_should_impl_display = cxx_is_displayable<T>;
   template<typename T>                                                                              \
   [[nodiscard]]                                                                                     \
   auto                                                                                              \
-  cxx_debug(T const& This [[clang::lifetimebound]]) noexcept -> rust::string                        \
+  cxx_debug(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                      \
     requires ::std::same_as<T, SELF>                                                                \
          and ::cxx_auto::cxx_is_debuggable<T>;                                                      \
                                                                                                     \
   template<typename T>                                                                              \
   [[nodiscard]]                                                                                     \
   auto                                                                                              \
-  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::string                      \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                    \
     requires ::std::same_as<T, SELF>                                                                \
          and ::cxx_auto::cxx_is_displayable<T>;
 
@@ -433,7 +433,7 @@ concept rust_should_impl_display = cxx_is_displayable<T>;
     requires ::std::same_as<T, SELF>                                                                                            \
          and ::cxx_auto::cxx_is_constructible<T, Args...>                                                                       \
   {                                                                                                                             \
-    new (This) T(std::forward<Args>(args)...);                                                                                  \
+    new (This) T(::std::forward<Args>(args)...);                                                                                \
   }                                                                                                                             \
                                                                                                                                 \
   template<typename T>                                                                                                          \
@@ -461,7 +461,7 @@ concept rust_should_impl_display = cxx_is_displayable<T>;
     requires ::std::same_as<T, SELF>                                                                                            \
          and ::cxx_auto::cxx_is_move_constructible<T>                                                                           \
   {                                                                                                                             \
-    new (This) T(std::forward<T>(that));                                                                                        \
+    new (This) T(::std::forward<T>(that));                                                                                      \
   }                                                                                                                             \
                                                                                                                                 \
   template<typename T>                                                                                                          \
@@ -470,7 +470,7 @@ concept rust_should_impl_display = cxx_is_displayable<T>;
     requires ::std::same_as<T, SELF>                                                                                            \
          and ::cxx_auto::cxx_is_destructible<T>                                                                                 \
   {                                                                                                                             \
-    std::destroy_at(This);                                                                                                      \
+    ::std::destroy_at(This);                                                                                                    \
   }                                                                                                                             \
                                                                                                                                 \
   template<typename T>                                                                                                          \
@@ -554,7 +554,7 @@ concept rust_should_impl_display = cxx_is_displayable<T>;
     } else if (result == 0) {                                                                                                   \
       return 0;                                                                                                                 \
     } else {                                                                                                                    \
-      return std::numeric_limits<int8_t>::max();                                                                                \
+      return ::std::numeric_limits<int8_t>::max();                                                                              \
     }                                                                                                                           \
   }                                                                                                                             \
                                                                                                                                 \
@@ -577,7 +577,7 @@ concept rust_should_impl_display = cxx_is_displayable<T>;
     } else if (not le and eq) {                                                                                                 \
       return 0;                                                                                                                 \
     } else {                                                                                                                    \
-      return std::numeric_limits<int8_t>::max();                                                                                \
+      return ::std::numeric_limits<int8_t>::max();                                                                              \
     }                                                                                                                           \
   }                                                                                                                             \
                                                                                                                                 \
@@ -588,57 +588,57 @@ concept rust_should_impl_display = cxx_is_displayable<T>;
     requires ::std::same_as<T, SELF>                                                                                            \
          and ::cxx_auto::cxx_is_hashable<T>                                                                                     \
   {                                                                                                                             \
-    return std::hash<T> {}(This);                                                                                               \
+    return ::std::hash<T> {}(This);                                                                                             \
   }                                                                                                                             \
                                                                                                                                 \
   template<typename T>                                                                                                          \
   [[nodiscard]]                                                                                                                 \
   auto                                                                                                                          \
-  cxx_debug(T const& This [[clang::lifetimebound]]) noexcept -> rust::string                                                    \
+  cxx_debug(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::string                                                  \
     requires ::std::same_as<T, SELF>                                                                                            \
          and ::cxx_auto::cxx_is_debuggable<T>                                                                                   \
   {                                                                                                                             \
-    std::ostringstream os;                                                                                                      \
+    ::std::ostringstream os;                                                                                                    \
     os << This;                                                                                                                 \
-    return rust::String::lossy(os.str());                                                                                       \
+    return ::rust::String::lossy(os.str());                                                                                     \
   }                                                                                                                             \
                                                                                                                                 \
   template<typename T>                                                                                                          \
   [[nodiscard]]                                                                                                                 \
   auto                                                                                                                          \
-  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String                                                  \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                                                \
     requires ::std::same_as<T, SELF>                                                                                            \
          and ::cxx_auto::detection::has_operator_std_string_view<T>                                                             \
   {                                                                                                                             \
-    return rust::String::lossy(std::string { This.operator std::string_view() });                                               \
+    return ::rust::String::lossy(::std::string { This.operator ::std::string_view() });                                         \
   }                                                                                                                             \
                                                                                                                                 \
   template<typename T>                                                                                                          \
   [[nodiscard]]                                                                                                                 \
   auto                                                                                                                          \
-  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String                                                  \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                                                \
     requires ::std::same_as<T, SELF>                                                                                            \
          and (not ::cxx_auto::detection::has_operator_std_string_view<T>)                                                       \
          and ::cxx_auto::detection::has_operator_std_string<T>                                                                  \
   {                                                                                                                             \
-    return rust::String::lossy(This.operator std::string());                                                                    \
+    return ::rust::String::lossy(This.operator ::std::string());                                                                \
   }                                                                                                                             \
                                                                                                                                 \
   template<typename T>                                                                                                          \
   [[nodiscard]]                                                                                                                 \
   auto                                                                                                                          \
-  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String                                                  \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                                                \
     requires ::std::same_as<T, SELF>                                                                                            \
          and (not ::cxx_auto::detection::has_operator_std_string_view<T>)                                                       \
          and (not ::cxx_auto::detection::has_operator_std_string<T>)                                                            \
          and ::cxx_auto::detection::has_to_string<T>                                                                            \
   {                                                                                                                             \
-    return rust::String::lossy(std::to_string(This));                                                                           \
+    return ::rust::String::lossy(::std::to_string(This));                                                                       \
   }                                                                                                                             \
                                                                                                                                 \
   template<typename T>                                                                                                          \
   [[nodiscard]]                                                                                                                 \
   auto                                                                                                                          \
-  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::string                                                  \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::string                                                \
     requires ::std::same_as<T, SELF>                                                                                            \
          and ::cxx_auto::cxx_is_displayable<T>;
