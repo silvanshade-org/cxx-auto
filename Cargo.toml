@@ -32,3 +32,6 @@ serde_json = { version = "1.0", default-features = false, features = ["preserve_
 static_assertions = { version = "1.1", default-features = false }
 syn = { version = "2.0", default-features = false }
 walkdir = { version = "2.3", default-features = false }
+
+# [patch.crates-io]
+# moveref = { path = "../moveref" }
