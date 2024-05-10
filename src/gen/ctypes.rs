@@ -1,4 +1,3 @@
-// NOTE: cxx-build an empty bridge so that `cxx/include/**/*.hxx` is exported to dependencies
 #[cxx::bridge]
 mod ffi {
     extern "C++" {
