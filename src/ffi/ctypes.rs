@@ -254,7 +254,6 @@ impl ::core::fmt::Display for c_ushort {
 }
 
 #[allow(non_camel_case_types)]
-#[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
 #[repr(transparent)]
 pub struct c_void(::core::ffi::c_void);
 
