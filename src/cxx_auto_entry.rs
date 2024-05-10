@@ -3,9 +3,7 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct CxxAutoEntry<'ctx> {
     cxx_include: &'ctx str,
-    cxx_proxy_include: Option<&'ctx str>,
     cxx_namespace: &'ctx str,
-    cxx_proxy_namespace: Option<&'ctx str>,
     cxx_name: Option<&'ctx str>,
     rust_name: &'ctx str,
     #[serde(default)]
