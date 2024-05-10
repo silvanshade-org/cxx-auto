@@ -288,7 +288,6 @@ fn emit_impl_drop(
     if info.is_rust_drop {
         Some(syn::parse_quote! {
             impl #generics_binder ::core::ops::Drop for #ident #generics {
-                #[cfg_attr(feature = "tracing", tracing::instrument)]
                 #[inline]
                 fn drop(&mut self) {
                     unsafe {
