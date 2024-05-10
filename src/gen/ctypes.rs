@@ -1,3 +1,4 @@
+#[cfg(feature = "ctypes")]
 #[cxx::bridge]
 mod ffi {
     extern "C++" {

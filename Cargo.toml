@@ -11,6 +11,7 @@ links = "cxx-auto"
 
 [features]
 bytemuck = ["dep:bytemuck"]
+ctypes = ["dep:libc"]
 
 [build-dependencies]
 cxx-build = { version = "1.0", default-features = false, features = ["parallel"] }
@@ -21,7 +22,7 @@ bytemuck = { version = "1.13", optional = true, default-features = false, featur
 cxx = { version = "1.0", default-features = false, features = ["c++20", "std"] }
 cxx-build = { version = "1.0", default-features = false, features = ["parallel"] }
 indexmap = { version = "2.0", default-features = false, features = ["serde"] }
-libc = { version = "0.2", default-features = false }
+libc = { version = "0.2", optional = true, default-features = false }
 moveref = { version = "0.0", default-features = false }
 proc-macro2 = { version = "1.0", default-features = false }
 quote = { version = "1.0", default-features = false }

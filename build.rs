@@ -4,7 +4,13 @@ type BoxError = Box<dyn std::error::Error + Send + Sync + 'static>;
 type BoxResult<T> = Result<T, BoxError>;
 
 fn main() -> BoxResult<()> {
-    cxx_build::bridge("src/gen/ctypes.rs")
+    // Compile an empty bridge to ensure `cxx-auto` lib is always produced.
+    #[allow(unused_mut)]
+    let mut bridges = vec!["src/gen/empty.rs"];
+    #[cfg(feature = "ctypes")]
+    // Compile bindings for extra ctypes if feature is enabled
+    bridges.push("src/gen/ctypes.rs");
+    cxx_build::bridges(bridges)
         .flag_if_supported("-fno-rtti")
         .flag_if_supported("-std=gnu++2b")
         .flag_if_supported("-Werror")

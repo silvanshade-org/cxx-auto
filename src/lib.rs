@@ -5,9 +5,11 @@ mod cxx_auto_artifact_info;
 mod cxx_auto_entry;
 mod error;
 mod ffi {
+    #[cfg(feature = "ctypes")]
     pub(crate) mod ctypes;
 }
 mod gen {
+    #[cfg(feature = "ctypes")]
     pub(crate) mod ctypes;
 }
 mod processing;
@@ -17,6 +19,7 @@ pub use indexmap;
 pub use moveref;
 pub use static_assertions;
 
+#[cfg(feature = "ctypes")]
 pub mod ctypes {
     pub use crate::ffi::ctypes::{
         c_char,
