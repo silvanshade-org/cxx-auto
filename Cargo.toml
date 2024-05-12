@@ -7,11 +7,14 @@ license = "Apache-2.0 WITH LLVM-exception"
 repository = "https://github.com/silvanshade/cxx-auto"
 documentation = "https://silvanshade.github.io/cxx-auto/cxx_auto"
 description = "Automatically generate cxx bindings"
+categories = ["api-bindings", "compilers", "development-tools", "external-ffi-bindings", "rust-patterns"]
+keywords = ["cxx", "c++", "clang", "gcc", "ffi", "codegen", "binding"]
 links = "cxx-auto"
 
 [features]
 bytemuck = ["dep:bytemuck"]
 ctypes = ["dep:libc"]
+std = []
 
 [build-dependencies]
 cxx-build = { version = "1.0", default-features = false, features = ["parallel"] }

@@ -1,9 +1,34 @@
 #![deny(clippy::all)]
+#![deny(clippy::cargo)]
+#![deny(clippy::nursery)]
 #![deny(clippy::pedantic)]
+#![deny(clippy::restriction)]
+#![allow(clippy::absolute_paths)]
+#![allow(clippy::blanket_clippy_restriction_lints)]
+#![allow(clippy::implicit_return)]
+#![allow(clippy::min_ident_chars)]
+#![allow(clippy::missing_docs_in_private_items)]
+#![allow(clippy::missing_inline_in_public_items)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::needless_return)]
+#![allow(clippy::pub_use)]
+#![allow(clippy::pub_with_shorthand)]
+#![allow(clippy::question_mark_used)]
+#![allow(clippy::redundant_pub_crate)]
+#![allow(clippy::redundant_pub_crate)]
+#![allow(clippy::ref_patterns)]
+#![allow(clippy::self_named_module_files)]
+#![allow(clippy::semicolon_outside_block)]
+#![allow(clippy::single_call_fn)]
+#![allow(clippy::single_char_lifetime_names)]
 
-mod cxx_auto_artifact_info;
-mod cxx_auto_entry;
+extern crate alloc;
+
+mod codegen;
+pub mod emit;
 mod error;
+mod type_elab;
+mod type_spec;
 mod ffi {
     #[cfg(feature = "ctypes")]
     pub(crate) mod ctypes;
@@ -12,9 +37,14 @@ mod gen {
     #[cfg(feature = "ctypes")]
     pub(crate) mod ctypes;
 }
-mod processing;
 
-pub use crate::{cxx_auto_artifact_info::CxxAutoArtifactInfo, cxx_auto_entry::CxxAutoEntry, error::*};
+use std::path::Path;
+
+pub use crate::{
+    error::{BoxError, BoxResult},
+    type_elab::TypeElab,
+    type_spec::TypeSpec,
+};
 pub use indexmap;
 pub use moveref;
 pub use static_assertions;
@@ -42,12 +72,7 @@ pub mod ctypes {
 /// # Errors
 ///
 /// Will return `Err` if auto-generation of the C++ bindings fails.
-pub fn process_artifacts(
-    project_dir: &std::path::Path,
-    out_dir: &std::path::Path,
-    cfg_dir: &std::path::Path,
-) -> BoxResult<()> {
-    let out_dir = &out_dir.join("src");
-    crate::processing::process_src_auto_module(project_dir, out_dir, cfg_dir)?;
+pub fn analyze(project_dir: &Path, out_dir: &Path, cfg_dir: &Path) -> crate::BoxResult<()> {
+    crate::emit::auto_module(project_dir, out_dir, cfg_dir)?;
     Ok(())
 }

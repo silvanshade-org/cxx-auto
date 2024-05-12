@@ -7,9 +7,11 @@ fn main() -> BoxResult<()> {
     // Compile an empty bridge to ensure `cxx-auto` lib is always produced.
     #[allow(unused_mut)]
     let mut bridges = vec!["src/gen/empty.rs"];
+
     #[cfg(feature = "ctypes")]
     // Compile bindings for extra ctypes if feature is enabled
     bridges.push("src/gen/ctypes.rs");
+
     cxx_build::bridges(bridges)
         .flag_if_supported("-fno-rtti")
         .flag_if_supported("-std=gnu++2b")
@@ -24,10 +26,13 @@ fn main() -> BoxResult<()> {
         .flag_if_supported("-Wno-nested-anon-types")
         .flag_if_supported("-Wno-unused-parameter")
         .try_compile("cxx-auto")?;
+
     let out_dir = PathBuf::from(std::env::var("OUT_DIR")?);
     let cxxbridge = out_dir.join("cxxbridge");
+
     println!("cargo::metadata=cxxbridge={}", cxxbridge.display());
     println!("cargo::rerun-if-changed=cxx");
-    println!("cargo::rerun-if-changed=gen");
+    println!("cargo::rerun-if-changed=src/gen");
+
     Ok(())
 }

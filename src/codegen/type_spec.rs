@@ -1,123 +1,102 @@
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-pub struct CxxAutoEntry<'ctx> {
-    cxx_include: &'ctx str,
-    cxx_namespace: &'ctx str,
-    cxx_name: Option<&'ctx str>,
-    rust_name: &'ctx str,
-    #[serde(default)]
-    rust_lifetimes: ::indexmap::IndexMap<&'ctx str, Vec<&'ctx str>>,
-}
-
-impl<'ctx> CxxAutoEntry<'ctx> {
-    #[must_use]
-    pub fn cxx_name(&self) -> &str {
-        self.cxx_name.unwrap_or(self.rust_name)
-    }
-
-    pub(crate) fn emit_items_write_module_for_file<'a, 'b>(
+impl crate::TypeSpec<'_> {
+    pub(crate) fn codegen_item_fn_elab_type_from_spec<'a, 'b>(
         &self,
         path_components: impl Iterator<Item = &'a String>,
         path_descendants: impl Iterator<Item = &'b String>,
-    ) -> Vec<syn::ItemFn> {
+    ) -> syn::ItemFn {
         let cxx_include = self.cxx_include;
         let cxx_namespace = self.cxx_namespace;
         let cxx_name = self.cxx_name();
         let rust_name = self.rust_name;
-        let lifetimes = {
-            let mut exprs = Vec::<syn::Expr>::new();
-            for (lifetime, bounds) in &self.rust_lifetimes {
-                exprs.push(syn::parse_quote!((#lifetime, vec![#(#bounds),*])));
-            }
-            exprs
-        };
-        vec![
-            syn::parse_quote! {
-                fn artifact_info() -> ::cxx_auto::CxxAutoArtifactInfo {
-                    let path_components = vec![#(#path_components),*];
-                    let path_descendants = vec![#(#path_descendants),*];
-                    let cxx_include = #cxx_include;
-                    let cxx_namespace = #cxx_namespace;
-                    let cxx_name = #cxx_name;
-                    let rust_name = #rust_name;
-                    let lifetimes = ::cxx_auto::indexmap::IndexMap::from_iter([#(#lifetimes),*]);
-                    let align = unsafe { self::ffi::CXX_ABI_ALIGN };
-                    let size = unsafe { self::ffi::CXX_ABI_SIZE };
-                    let cxx_has_operator_equal = unsafe { self::ffi::CXX_HAS_OPERATOR_EQUAL };
-                    let cxx_has_operator_not_equal = unsafe { self::ffi::CXX_HAS_OPERATOR_NOT_EQUAL };
-                    let cxx_has_operator_less_than = unsafe { self::ffi::CXX_HAS_OPERATOR_LESS_THAN };
-                    let cxx_has_operator_less_than_or_equal = unsafe { self::ffi::CXX_HAS_OPERATOR_LESS_THAN_OR_EQUAL };
-                    let cxx_has_operator_greater_than = unsafe { self::ffi::CXX_HAS_OPERATOR_GREATER_THAN };
-                    let cxx_has_operator_greater_than_or_equal = unsafe { self::ffi::CXX_HAS_OPERATOR_GREATER_THAN_OR_EQUAL };
-                    let is_rust_cxx_extern_type_trivial = {
-                        let cxx_is_trivially_movable = unsafe { self::ffi::CXX_IS_TRIVIALLY_MOVABLE };
-                        let rust_should_impl_cxx_extern_type_trivial = unsafe { self::ffi::RUST_SHOULD_IMPL_CXX_EXTERN_TYPE_TRIVIAL };
-                        if cxx_is_trivially_movable == rust_should_impl_cxx_extern_type_trivial {
-                            cxx_is_trivially_movable
-                        } else {
-                            rust_should_impl_cxx_extern_type_trivial
-                        }
-                    };
-                    let is_rust_unpin = unsafe { self::ffi::RUST_SHOULD_IMPL_UNPIN };
-                    let is_rust_send = unsafe { self::ffi::RUST_SHOULD_IMPL_SEND };
-                    let is_rust_sync = unsafe { self::ffi::RUST_SHOULD_IMPL_SYNC };
-                    let is_rust_copy = unsafe { self::ffi::RUST_SHOULD_IMPL_COPY };
-                    let is_rust_drop = unsafe { self::ffi::RUST_SHOULD_IMPL_DROP };
-                    let is_rust_debug = unsafe { self::ffi::RUST_SHOULD_IMPL_DEBUG };
-                    let is_rust_default = unsafe { self::ffi::RUST_SHOULD_IMPL_DEFAULT };
-                    let is_rust_display = unsafe { self::ffi::RUST_SHOULD_IMPL_DISPLAY };
-                    let is_rust_copy_new = unsafe { self::ffi::RUST_SHOULD_IMPL_MOVEREF_COPY_NEW };
-                    let is_rust_move_new = unsafe { self::ffi::RUST_SHOULD_IMPL_MOVEREF_MOVE_NEW };
-                    let is_rust_eq = unsafe { self::ffi::RUST_SHOULD_IMPL_EQ };
-                    let is_rust_partial_eq = unsafe { self::ffi::RUST_SHOULD_IMPL_PARTIAL_EQ };
-                    let is_rust_partial_ord = unsafe { self::ffi::RUST_SHOULD_IMPL_PARTIAL_ORD };
-                    let is_rust_ord = unsafe { self::ffi::RUST_SHOULD_IMPL_ORD };
-                    let is_rust_hash = unsafe { self::ffi::RUST_SHOULD_IMPL_HASH };
-                    ::cxx_auto::CxxAutoArtifactInfo {
-                        path_components,
-                        path_descendants,
-                        cxx_include,
-                        cxx_namespace,
-                        cxx_name,
-                        rust_name,
-                        lifetimes,
-                        align,
-                        size,
-                        cxx_has_operator_equal,
-                        cxx_has_operator_not_equal,
-                        cxx_has_operator_less_than,
-                        cxx_has_operator_less_than_or_equal,
-                        cxx_has_operator_greater_than,
-                        cxx_has_operator_greater_than_or_equal,
-                        is_rust_cxx_extern_type_trivial,
-                        is_rust_unpin,
-                        is_rust_send,
-                        is_rust_sync,
-                        is_rust_copy,
-                        is_rust_debug,
-                        is_rust_default,
-                        is_rust_display,
-                        is_rust_drop,
-                        is_rust_copy_new,
-                        is_rust_move_new,
-                        is_rust_eq,
-                        is_rust_partial_eq,
-                        is_rust_partial_ord,
-                        is_rust_ord,
-                        is_rust_hash,
+        let rust_lifetimes = self
+            .rust_lifetimes
+            .iter()
+            .map(|(lifetime, bounds)| -> syn::Expr {
+                syn::parse_quote! {
+                    (#lifetime, ::std::vec![#(#bounds),*])
+                }
+            })
+            .collect::<Vec<_>>();
+        syn::parse_quote! {
+            fn elab_type_from_spec() -> ::cxx_auto::TypeElab {
+                let path_components = ::std::vec![#(#path_components),*];
+                let path_descendants = ::std::vec![#(#path_descendants),*];
+                let cxx_include = #cxx_include;
+                let cxx_namespace = #cxx_namespace;
+                let cxx_name = #cxx_name;
+                let rust_name = #rust_name;
+                let rust_lifetimes = ::cxx_auto::indexmap::IndexMap::from_iter([#(#rust_lifetimes),*]);
+                let cxx_abi_align = unsafe { self::ffi::CXX_ABI_ALIGN };
+                let cxx_abi_size = unsafe { self::ffi::CXX_ABI_SIZE };
+                let cxx_has_operator_equal = unsafe { self::ffi::CXX_HAS_OPERATOR_EQUAL };
+                let cxx_has_operator_not_equal = unsafe { self::ffi::CXX_HAS_OPERATOR_NOT_EQUAL };
+                let cxx_has_operator_less_than = unsafe { self::ffi::CXX_HAS_OPERATOR_LESS_THAN };
+                let cxx_has_operator_less_than_or_equal = unsafe { self::ffi::CXX_HAS_OPERATOR_LESS_THAN_OR_EQUAL };
+                let cxx_has_operator_greater_than = unsafe { self::ffi::CXX_HAS_OPERATOR_GREATER_THAN };
+                let cxx_has_operator_greater_than_or_equal = unsafe { self::ffi::CXX_HAS_OPERATOR_GREATER_THAN_OR_EQUAL };
+                let is_rust_cxx_extern_type_trivial = {
+                    let cxx_is_trivially_movable = unsafe { self::ffi::CXX_IS_TRIVIALLY_MOVABLE };
+                    let rust_should_impl_cxx_extern_type_trivial = unsafe { self::ffi::RUST_SHOULD_IMPL_CXX_EXTERN_TYPE_TRIVIAL };
+                    if cxx_is_trivially_movable == rust_should_impl_cxx_extern_type_trivial {
+                        cxx_is_trivially_movable
+                    } else {
+                        rust_should_impl_cxx_extern_type_trivial
                     }
+                };
+                let is_rust_unpin = unsafe { self::ffi::RUST_SHOULD_IMPL_UNPIN };
+                let is_rust_send = unsafe { self::ffi::RUST_SHOULD_IMPL_SEND };
+                let is_rust_sync = unsafe { self::ffi::RUST_SHOULD_IMPL_SYNC };
+                let is_rust_copy = unsafe { self::ffi::RUST_SHOULD_IMPL_COPY };
+                let is_rust_drop = unsafe { self::ffi::RUST_SHOULD_IMPL_DROP };
+                let is_rust_debug = unsafe { self::ffi::RUST_SHOULD_IMPL_DEBUG };
+                let is_rust_default = unsafe { self::ffi::RUST_SHOULD_IMPL_DEFAULT };
+                let is_rust_display = unsafe { self::ffi::RUST_SHOULD_IMPL_DISPLAY };
+                let is_rust_copy_new = unsafe { self::ffi::RUST_SHOULD_IMPL_MOVEREF_COPY_NEW };
+                let is_rust_move_new = unsafe { self::ffi::RUST_SHOULD_IMPL_MOVEREF_MOVE_NEW };
+                let is_rust_eq = unsafe { self::ffi::RUST_SHOULD_IMPL_EQ };
+                let is_rust_partial_eq = unsafe { self::ffi::RUST_SHOULD_IMPL_PARTIAL_EQ };
+                let is_rust_partial_ord = unsafe { self::ffi::RUST_SHOULD_IMPL_PARTIAL_ORD };
+                let is_rust_ord = unsafe { self::ffi::RUST_SHOULD_IMPL_ORD };
+                let is_rust_hash = unsafe { self::ffi::RUST_SHOULD_IMPL_HASH };
+                ::cxx_auto::TypeElab {
+                    path_components,
+                    path_descendants,
+                    cxx_include,
+                    cxx_namespace,
+                    cxx_name,
+                    rust_name,
+                    rust_lifetimes,
+                    cxx_abi_align,
+                    cxx_abi_size,
+                    cxx_has_operator_equal,
+                    cxx_has_operator_not_equal,
+                    cxx_has_operator_less_than,
+                    cxx_has_operator_less_than_or_equal,
+                    cxx_has_operator_greater_than,
+                    cxx_has_operator_greater_than_or_equal,
+                    is_rust_cxx_extern_type_trivial,
+                    is_rust_unpin,
+                    is_rust_send,
+                    is_rust_sync,
+                    is_rust_copy,
+                    is_rust_debug,
+                    is_rust_default,
+                    is_rust_display,
+                    is_rust_drop,
+                    is_rust_copy_new,
+                    is_rust_move_new,
+                    is_rust_eq,
+                    is_rust_partial_eq,
+                    is_rust_partial_ord,
+                    is_rust_ord,
+                    is_rust_hash,
                 }
-            },
-            syn::parse_quote! {
-                pub(crate) fn write_module(auto_out_dir_root: &::std::path::Path) -> ::cxx_auto::BoxResult<()> {
-                    self::artifact_info().write_module_for_file(auto_out_dir_root)
-                }
-            },
-        ]
+            }
+        }
     }
 
-    pub(crate) fn emit_item_mod_cxx_bridge(&self) -> syn::Item {
+    #[allow(clippy::too_many_lines)]
+    pub(crate) fn codegen_item_mod_auto_type_abi(&self) -> syn::Item {
         let namespace_with_dollars = self.cxx_namespace.replace("::", "$");
         let link_name = |name: &str| [namespace_with_dollars.as_str(), "$", name].concat();
         let cxx_abi_align = link_name("CXX_ABI_ALIGN");
