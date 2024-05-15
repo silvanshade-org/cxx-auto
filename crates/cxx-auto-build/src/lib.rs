@@ -60,6 +60,7 @@ impl RawTypeSpecLifetime {
         let bounds_slice = bounds_data_ref.map_or(EMPTY_SLICE, |bounds_data_opt| unsafe {
             core::slice::from_raw_parts(bounds_data_opt, self.bounds_len)
         });
+        debug_assert!(bounds_slice.len() == self.bounds_len); // Check if data is null that len was 0
         let bounds = bounds_slice
             .iter()
             .copied()
