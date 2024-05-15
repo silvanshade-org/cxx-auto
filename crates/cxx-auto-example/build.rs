@@ -32,5 +32,7 @@ fn main() -> BoxResult<()> {
 
     cxx_auto_build::generate(&build, out_dir, &objects)?;
 
+    println!("cargo::rerun-if-changed=cxx");
+
     Ok(())
 }

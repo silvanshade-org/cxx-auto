@@ -48,10 +48,20 @@ pub struct RawTypeSpecLifetime {
 
 impl RawTypeSpecLifetime {
     fn validate(&self) -> BoxResult<TypeSpecLifetime> {
+        // NOTE: C++ will use `nullptr` for empty data, but Rust's slice pointers must always be
+        // non-null: https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety. So when the
+        // data pointer is null we just return a pre-constructed empty slice directly, and this also
+        // matches the behavior of `cxx`.
+        const EMPTY_SLICE: &[*const core::ffi::c_char] = &[];
+
         let name_ref = unsafe { self.name.as_ref() }.ok_or_else(error_null_pointer)?;
         let name = unsafe { CStr::from_ptr(name_ref) }.to_str()?;
-        let bounds_data_ref = unsafe { self.bounds_data.as_ref() }.ok_or_else(error_null_pointer)?;
-        let bounds = unsafe { core::slice::from_raw_parts(bounds_data_ref, self.bounds_len) }
+        let bounds_data_ref = unsafe { self.bounds_data.as_ref() };
+        let bounds_slice = bounds_data_ref.map_or(EMPTY_SLICE, |bounds_data_opt| unsafe {
+            core::slice::from_raw_parts(bounds_data_opt, self.bounds_len)
+        });
+
+        let bounds = bounds_slice
             .iter()
             .copied()
             .map(|ptr| {
