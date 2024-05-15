@@ -1,7 +1,7 @@
 #include "cxx-auto-example/cxx/include/foo.hh"
 
 namespace example {
-cxx_auto::TypeSpec const spec = {
+::cxx_auto::TypeSpec const spec = {
   .cc_name = "Foo",
   .cc_namespace = "example",
   .rs_lifetimes = {
