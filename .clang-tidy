@@ -1,5 +1,5 @@
 ---
-Checks: "clang-diagnostic-*,clang-analyzer-*,*,*,-altera-unroll-loops,-bugprone-easily-swappable-parameters,-fuchsia-default-arguments-calls,-fuchsia-default-arguments-declarations,-fuchsia-overloaded-operator,-fuchsia-trailing-return,-llvmlibc-callee-namespace,-llvmlibc-implementation-in-namespace,-llvmlibc-restrict-system-libc-headers,-readability-identifier-length,-readability-redundant-access-specifiers"
+Checks: "clang-diagnostic-*,clang-analyzer-*,*,*,-altera-unroll-loops,-bugprone-easily-swappable-parameters,-cert-err58-cpp,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-pro-type-member-init,-fuchsia-default-arguments-calls,-fuchsia-default-arguments-declarations,-fuchsia-overloaded-operator,-fuchsia-statically-constructed-objects,-fuchsia-trailing-return,-google-explicit-constructor,-hicpp-explicit-conversions,-hicpp-member-init,-llvmlibc-callee-namespace,-llvmlibc-implementation-in-namespace,-llvmlibc-restrict-system-libc-headers,-misc-non-private-member-variables-in-classes,-readability-identifier-length,-readability-magic-numbers,-readability-redundant-access-specifiers,-readability-redundant-member-init"
 WarningsAsErrors: ""
 HeaderFileExtensions:
   - ""
