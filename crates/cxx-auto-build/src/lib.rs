@@ -60,7 +60,6 @@ impl RawTypeSpecLifetime {
         let bounds_slice = bounds_data_ref.map_or(EMPTY_SLICE, |bounds_data_opt| unsafe {
             core::slice::from_raw_parts(bounds_data_opt, self.bounds_len)
         });
-
         let bounds = bounds_slice
             .iter()
             .copied()
