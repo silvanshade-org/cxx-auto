@@ -292,8 +292,6 @@ static_assert(derive::rust_should_impl_cxx_extern_type_trivial<TypeSpecFFI>);
 template<size_t len>
 struct alignas(128) TypeSpecStorage
 {
-  friend struct TypeSpec;
-
   explicit consteval TypeSpecStorage(TypeSpec const& init)
     : cc_name(init.cc_name)
     , cc_namespace(init.cc_namespace)
