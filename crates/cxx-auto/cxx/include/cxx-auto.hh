@@ -289,18 +289,42 @@ struct alignas(64) TypeSpecFFI
 static_assert(derive::rust_should_impl_cxx_extern_type_trivial<TypeSpecFFI>);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
-struct alignas(128) TypeSpecAdapter
+template<size_t len>
+struct alignas(128) TypeSpecStorage
 {
   friend struct TypeSpec;
 
-  explicit TypeSpecAdapter(TypeSpec const& init);
+  explicit consteval TypeSpecStorage(TypeSpec const& init)
+    : cc_name(init.cc_name)
+    , cc_namespace(init.cc_namespace)
+    , rs_name(init.rs_name)
+    , rs_namespace(init.rs_namespace)
+    , rs_lifetimes(init.rs_lifetimes)
+  {
+    std::transform(
+      rs_lifetimes.begin(),
+      rs_lifetimes.end(),
+      rs_lifetimes_ffi.begin(),
+      [&](TypeSpecLifetime const& elem) -> TypeSpecLifetimeFFI {
+        return {
+          .name = elem.name,
+          .bounds_data = elem.bounds.begin(),
+          .bounds_len = elem.bounds.size(),
+        };
+      });
+  }
 
-  // // NOTE: The returned `TypeSpecFFI` is only valid as long as the instance `.ffi()` was called on
-  // // remains initialized. There is an implicit lifetime bound.
-  // [[nodiscard]]
-  // auto ffi() const [[clang::lifetimebound]] -> TypeSpecFFI;
-
-  explicit operator TypeSpecFFI() const;
+  explicit consteval operator TypeSpecFFI() const
+  {
+    return {
+      .cc_name = this->cc_name,
+      .cc_namespace = this->cc_namespace,
+      .rs_name = this->rs_name,
+      .rs_namespace = this->rs_namespace,
+      .rs_lifetimes_data = this->rs_lifetimes_ffi.data(),
+      .rs_lifetimes_len = this->rs_lifetimes_ffi.size(),
+    };
+  }
 
 private:
   char const* cc_name;
@@ -308,7 +332,7 @@ private:
   char const* rs_name = cc_name;
   char const* rs_namespace = cc_namespace;
   std::initializer_list<TypeSpecLifetime> rs_lifetimes;
-  std::vector<TypeSpecLifetimeFFI> rs_lifetimes_ffi;
+  std::array<TypeSpecLifetimeFFI, len> rs_lifetimes_ffi;
 };
 
 struct alignas(32) TypeElabFFI
@@ -444,8 +468,10 @@ struct alignas(32) TypeElabFFI
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CXX_AUTO_PRELUDE_SOURCE(SELF, SPEC)                                                                         \
-  ::cxx_auto::TypeSpecAdapter const type_spec_adapter = ::cxx_auto::TypeSpecAdapter(SPEC);                          \
-  ::cxx_auto::TypeSpecFFI const type_spec = ::cxx_auto::TypeSpecFFI(type_spec_adapter);                             \
+  namespace {                                                                                                       \
+  constexpr auto const type_spec_storage = ::cxx_auto::TypeSpecStorage<(SPEC).rs_lifetimes.size()>(spec);           \
+  }                                                                                                                 \
+  constexpr auto const type_spec = ::cxx_auto::TypeSpecFFI(type_spec_storage);                                      \
   ::cxx_auto::TypeElabFFI const type_elab = {                                                                       \
     .cxx_abi_align = alignof(SELF),                                                                                 \
     .cxx_abi_size = sizeof(SELF),                                                                                   \
