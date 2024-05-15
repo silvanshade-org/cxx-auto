@@ -10,7 +10,10 @@ constexpr ::cxx_auto::TypeSpec const spec = {
   .rs_lifetimes {
     { .name = "a"
     , .bounds { "a", "b" } },
-    { .name = "c" }
+    { .name = "c"
+    , .bounds { "x" } },
+    { .name = "d"
+    , .bounds { "z", "h" } }
   }
 };
 // clang-format on
