@@ -8,23 +8,26 @@ project(cxx-auto LANGUAGES CXX)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_library(cxx-auto STATIC
-  cxx/lib/cmake.cxx
+  crates/cxx-auto/cxx/lib/cxx-auto.cc
 )
 target_include_directories(cxx-auto PUBLIC
-  ../cxx-auto/..
+  crates
   target/cxxbridge
 )
-target_compile_options(cxx-auto PUBLIC
-  -fno-rtti # needed to avoid "undefined reference to `typeinfo for [...]`" errors
-  -std=gnu++23
-  -Werror
-  -Wall
-  -Wextra
-  -pedantic
-  -Wno-ambiguous-reversed-operator
-  -Wno-deprecated-anon-enum-enum-conversion
-  -Wno-deprecated-builtins
-  -Wno-dollar-in-identifier-extension
-  -Wno-nested-anon-types
-  -Wno-unused-parameter
+set_target_properties(cxx-auto PROPERTIES
+  CXX_STANDARD 23
+  COMPILE_WARNING_AS_ERROR ON
 )
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  target_compile_options(cxx-auto PUBLIC
+    -Wall
+    -Wextra
+    -Wpedantic
+  )
+endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  target_compile_options(cxx-auto PUBLIC
+    -Wno-c99-extensions
+    -Wno-dollar-in-identifier-extension
+  )
+endif()

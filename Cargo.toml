@@ -1,40 +1,14 @@
-[package]
-edition = "2021"
-name = "cxx-auto"
-version = "0.0.3"
-authors = ["silvanshade <silvanshade@users.noreply.github.com>"]
-license = "Apache-2.0 WITH LLVM-exception"
-repository = "https://github.com/silvanshade/cxx-auto"
-documentation = "https://silvanshade.github.io/cxx-auto/cxx_auto"
-description = "Automatically generate cxx bindings"
-categories = ["api-bindings", "compilers", "development-tools", "external-ffi-bindings", "rust-patterns"]
-keywords = ["cxx", "c++", "clang", "gcc", "ffi", "codegen", "binding"]
-links = "cxx-auto"
+[workspace]
+resolver = "2"
+members = [
+  "crates/cxx-auto",
+  "crates/cxx-auto-build",
+  "crates/cxx-auto-example",
+]
 
-[features]
-bytemuck = ["dep:bytemuck"]
-ctypes = ["dep:libc"]
-std = []
-
-[build-dependencies]
+[workspace.dependencies]
+cc = { version = "1.0", features = ["parallel"] }
+cxx = { version = "1.0", features = ["c++20"] }
+cxx-auto = { path = "crates/cxx-auto" }
+cxx-auto-build = { path = "crates/cxx-auto-build" }
 cxx-build = { version = "1.0", default-features = false, features = ["parallel"] }
-serde = { version = "1.0", default-features = false, features = ["derive"] }
-
-[dependencies]
-bytemuck = { version = "1.13", optional = true, default-features = false, features = ["derive"] }
-cxx = { version = "1.0", default-features = false, features = ["c++20", "std"] }
-cxx-build = { version = "1.0", default-features = false, features = ["parallel"] }
-indexmap = { version = "2.0", default-features = false, features = ["serde"] }
-libc = { version = "0.2", optional = true, default-features = false }
-moveref = { version = "0.0", default-features = false }
-proc-macro2 = { version = "1.0", default-features = false }
-quote = { version = "1.0", default-features = false }
-rust-format = { version = "0.3", default-features = false, features = ["token_stream"] }
-serde = { version = "1.0", default-features = false, features = ["derive"] }
-serde_json = { version = "1.0", default-features = false, features = ["preserve_order"] }
-static_assertions = { version = "1.1", default-features = false }
-syn = { version = "2.0", default-features = false }
-walkdir = { version = "2.3", default-features = false }
-
-# [patch.crates-io]
-# moveref = { path = "../moveref" }

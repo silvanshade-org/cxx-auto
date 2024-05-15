@@ -1,0 +1,24 @@
+[package]
+publish = false
+edition = "2021"
+name = "cxx-auto-example"
+version = "0.0.0"
+authors = ["silvanshade <silvanshade@users.noreply.github.com>"]
+license = "Apache-2.0 WITH LLVM-exception"
+repository = "https://github.com/silvanshade/cxx-auto"
+documentation = "https://silvanshade.github.io/cxx-auto/cxx_auto"
+description = "Automatically generate cxx bindings"
+readme = "../README.md"
+categories = ["api-bindings", "compilers", "development-tools", "external-ffi-bindings", "rust-patterns"]
+keywords = ["cxx", "c++", "clang", "gcc", "ffi", "codegen", "binding"]
+
+[build-dependencies]
+cc.workspace = true
+cxx-auto.workspace = true
+cxx-auto-build.workspace = true
+cxx-build.workspace = true
+
+[dependencies]
+cc.workspace = true
+cxx.workspace = true
+cxx-auto.workspace = true
