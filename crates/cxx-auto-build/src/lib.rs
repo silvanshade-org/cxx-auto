@@ -60,7 +60,10 @@ impl RawTypeSpecLifetime {
         let bounds_slice = bounds_data_ref.map_or(EMPTY_SLICE, |bounds_data_opt| unsafe {
             core::slice::from_raw_parts(bounds_data_opt, self.bounds_len)
         });
-        debug_assert!(bounds_slice.len() == self.bounds_len); // Check if data is null that len was 0
+        // Check if data is null that len was 0
+        if bounds_slice.len() != self.bounds_len {
+            return Err(format!("Bounds data pointer was NULL but len was {}!", bounds_slice.len()).into());
+        }
         let bounds = bounds_slice
             .iter()
             .copied()
