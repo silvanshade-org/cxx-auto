@@ -7,7 +7,7 @@ namespace example {
 constexpr ::cxx_auto::TypeSpec const spec = {
   .cc_name = "Foo",
   .cc_namespace = "example",
-  .rs_lifetimes = {
+  .rs_lifetimes {
     { .name = "a"
     , .bounds { "a", "b" } },
     { .name = "c" }
