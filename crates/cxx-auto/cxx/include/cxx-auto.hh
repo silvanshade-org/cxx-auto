@@ -259,21 +259,24 @@ struct alignas(32) TypeSpecLifetimeFFI
 };
 static_assert(derive::rust_should_impl_cxx_extern_type_trivial<TypeSpecLifetimeFFI>);
 
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 struct alignas(32) TypeSpecLifetime
 {
   char const* name;
-  std::initializer_list<char const*> bounds {};
+  std::initializer_list<char const*> bounds = {}; // NOLINT(readability-redundant-member-init)
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 struct alignas(64) TypeSpec
 {
   char const* cc_name;
   char const* cc_namespace;
   char const* rs_name = cc_name;
   char const* rs_namespace = cc_namespace;
-  std::initializer_list<TypeSpecLifetime> rs_lifetimes = {};
+  std::initializer_list<TypeSpecLifetime> rs_lifetimes = {}; // NOLINT(readability-redundant-member-init)
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 struct alignas(64) TypeSpecFFI
 {
   char const* cc_name;
@@ -285,18 +288,19 @@ struct alignas(64) TypeSpecFFI
 };
 static_assert(derive::rust_should_impl_cxx_extern_type_trivial<TypeSpecFFI>);
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 struct alignas(128) TypeSpecAdapter
 {
   friend struct TypeSpec;
 
-  TypeSpecAdapter(TypeSpec const& init);
+  explicit TypeSpecAdapter(TypeSpec const& init);
 
   // // NOTE: The returned `TypeSpecFFI` is only valid as long as the instance `.ffi()` was called on
   // // remains initialized. There is an implicit lifetime bound.
   // [[nodiscard]]
   // auto ffi() const [[clang::lifetimebound]] -> TypeSpecFFI;
 
-  operator TypeSpecFFI() const;
+  explicit operator TypeSpecFFI() const;
 
 private:
   char const* cc_name;
@@ -440,8 +444,8 @@ struct alignas(32) TypeElabFFI
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CXX_AUTO_PRELUDE_SOURCE(SELF, SPEC)                                                                         \
-  ::cxx_auto::TypeSpecAdapter const type_spec_adapter = SPEC;                                                       \
-  ::cxx_auto::TypeSpecFFI const type_spec = type_spec_adapter;                                                      \
+  ::cxx_auto::TypeSpecAdapter const type_spec_adapter = ::cxx_auto::TypeSpecAdapter(SPEC);                          \
+  ::cxx_auto::TypeSpecFFI const type_spec = ::cxx_auto::TypeSpecFFI(type_spec_adapter);                             \
   ::cxx_auto::TypeElabFFI const type_elab = {                                                                       \
     .cxx_abi_align = alignof(SELF),                                                                                 \
     .cxx_abi_size = sizeof(SELF),                                                                                   \
