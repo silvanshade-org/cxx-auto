@@ -161,6 +161,8 @@ pub struct TypeElab {
     pub rust_should_impl_display: bool,
 }
 
+Type
+
 /// # Errors
 ///
 /// # Panics
@@ -169,11 +171,7 @@ pub struct TypeElab {
 pub fn generate(builder: &cc::Build, out_dir: &Utf8Path, objects: Vec<PathBuf>) -> crate::BoxResult<()> {
     let cxx_auto_out = Utf8Path::new(&std::env::var("DEP_CXX_AUTO_CXXBRIDGE_DIR0")?).join("../..");
     let compiler = builder.try_get_compiler()?;
-    let mut objects = objects
-        .into_iter()
-        .map(Utf8PathBuf::from_path_buf)
-        .filter_ok(|elem| !elem.as_str().ends_with(".rs.o"))
-        .map(|res| res.map_err(|path| BoxError::from(format!("Path is not valid UTF-8: {}", path.display()))));
+    let mut objects = filter_objects(objects);
     while let Some(obj) = objects.next().transpose()? {
         let lib = {
             let name = obj
@@ -195,4 +193,12 @@ pub fn generate(builder: &cc::Build, out_dir: &Utf8Path, objects: Vec<PathBuf>) 
         lib.close()?;
     }
     Ok(())
+}
+
+fn filter_objects(objects: Vec<PathBuf>) -> impl Iterator<Item = BoxResult<Utf8PathBuf>> {
+    objects
+        .into_iter()
+        .map(Utf8PathBuf::from_path_buf)
+        .filter_ok(|elem| !elem.as_str().ends_with(".rs.o"))
+        .map(|res| res.map_err(|path| BoxError::from(format!("Path is not valid UTF-8: {}", path.display()))))
 }
