@@ -1,3 +1,5 @@
+#pragma once
+
 #include "cxx-auto/macros.hh"
 
 import cxx_auto;

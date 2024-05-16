@@ -1,3 +1,5 @@
+#pragma once
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CXX_AUTO_PRELUDE_HEADER_EXTERN()              \
   extern "C" ::cxx_auto::TypeSpecFFI const type_spec; \
