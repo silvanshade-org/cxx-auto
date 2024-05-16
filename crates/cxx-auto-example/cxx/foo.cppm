@@ -1,6 +1,6 @@
 module;
 
-#include "cxx-auto/macros.hh"
+#include "cxx-auto/macros.hpp"
 
 export module cxx_auto_example.foo;
 
@@ -27,5 +27,5 @@ export inline constexpr ::cxx_auto::TypeSpec const spec = {
 };
 // clang-format on
 
-CXX_AUTO_PRELUDE_HEADER_MODULE(Foo)
+CXX_AUTO_PRELUDE_HEADER(Foo)
 } // namespace example

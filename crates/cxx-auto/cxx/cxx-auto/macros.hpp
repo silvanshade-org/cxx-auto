@@ -1,12 +1,15 @@
 #pragma once
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CXX_AUTO_PRELUDE_HEADER_EXTERN()              \
-  extern "C" ::cxx_auto::TypeSpecFFI const type_spec; \
-  extern "C" ::cxx_auto::TypeElabFFI const type_elab;
+#define CXX_AUTO_PRELUDE_EXTERN_SPEC(SELF, SPEC)                                                                 \
+  namespace {                                                                                                    \
+  inline constexpr auto const type_spec_storage = ::cxx_auto::TypeSpecStorage<(SPEC).rs_lifetimes.size()>(SPEC); \
+  }                                                                                                              \
+  extern "C" inline constexpr auto const type_spec = ::cxx_auto::TypeSpecFFI(type_spec_storage);                 \
+  extern "C" inline constexpr auto const type_elab = ::cxx_auto::TypeElabFFI::elab<SELF>();
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CXX_AUTO_PRELUDE_HEADER_MODULE(SELF)                                                        \
+#define CXX_AUTO_PRELUDE_HEADER(SELF)                                                               \
   export template<typename T>                                                                       \
   auto                                                                                              \
   cxx_default_new(T* This [[clang::lifetimebound]]) noexcept -> void                                \
@@ -110,15 +113,7 @@
          and ::cxx_auto::satisfy::cxx_is_displayable<T>;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CXX_AUTO_PRELUDE_SOURCE_EXTERN(SELF, SPEC)                                                               \
-  namespace {                                                                                                    \
-  inline constexpr auto const type_spec_storage = ::cxx_auto::TypeSpecStorage<(SPEC).rs_lifetimes.size()>(SPEC); \
-  }                                                                                                              \
-  inline constexpr auto const type_spec = ::cxx_auto::TypeSpecFFI(type_spec_storage);                            \
-  inline constexpr ::cxx_auto::TypeElabFFI const type_elab = ::cxx_auto::TypeElabFFI::elab<SELF>();
-
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CXX_AUTO_PRELUDE_SOURCE_MODULE(SELF)                                                            \
+#define CXX_AUTO_PRELUDE_SOURCE(SELF)                                                                   \
   template<typename T, typename... Args>                                                                \
   auto                                                                                                  \
   cxx_placement_new(T* This [[clang::lifetimebound]], Args&&... args) noexcept -> void                  \
