@@ -276,7 +276,6 @@ struct alignas(64) TypeSpec
   std::initializer_list<TypeSpecLifetime> rs_lifetimes = {}; // NOLINT(readability-redundant-member-init)
 };
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 struct alignas(64) TypeSpecFFI
 {
   char8_t const* cc_name;
@@ -288,7 +287,6 @@ struct alignas(64) TypeSpecFFI
 };
 static_assert(derive::rust_should_impl_cxx_extern_type_trivial<TypeSpecFFI>);
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 template<size_t len>
 struct alignas(128) TypeSpecStorage
 {
@@ -353,6 +351,31 @@ struct alignas(32) TypeElabFFI
   bool rust_should_impl_hash;
   bool rust_should_impl_debug;
   bool rust_should_impl_display;
+
+  template<typename Self>
+  static consteval auto elab() -> TypeElabFFI
+  {
+    return {
+      .cxx_abi_align = alignof(Self),
+      .cxx_abi_size = sizeof(Self),
+      .rust_should_impl_cxx_extern_type_trivial = ::cxx_auto::derive::rust_should_impl_cxx_extern_type_trivial<Self>,
+      .rust_should_impl_unpin = ::cxx_auto::derive::rust_should_impl_unpin<Self>,
+      .rust_should_impl_send = ::cxx_auto::derive::rust_should_impl_send<Self>,
+      .rust_should_impl_sync = ::cxx_auto::derive::rust_should_impl_sync<Self>,
+      .rust_should_impl_drop = ::cxx_auto::derive::rust_should_impl_drop<Self>,
+      .rust_should_impl_copy = ::cxx_auto::derive::rust_should_impl_copy<Self>,
+      .rust_should_impl_default = ::cxx_auto::derive::rust_should_impl_default<Self>,
+      .rust_should_impl_moveref_copy_new = ::cxx_auto::derive::rust_should_impl_moveref_copy_new<Self>,
+      .rust_should_impl_moveref_move_new = ::cxx_auto::derive::rust_should_impl_moveref_move_new<Self>,
+      .rust_should_impl_eq = ::cxx_auto::derive::rust_should_impl_eq<Self>,
+      .rust_should_impl_partial_eq = ::cxx_auto::derive::rust_should_impl_partial_eq<Self>,
+      .rust_should_impl_partial_ord = ::cxx_auto::derive::rust_should_impl_partial_ord<Self>,
+      .rust_should_impl_ord = ::cxx_auto::derive::rust_should_impl_ord<Self>,
+      .rust_should_impl_hash = ::cxx_auto::derive::rust_should_impl_hash<Self>,
+      .rust_should_impl_debug = ::cxx_auto::derive::rust_should_impl_debug<Self>,
+      .rust_should_impl_display = ::cxx_auto::derive::rust_should_impl_display<Self>,
+    };
+  }
 };
 
 } // namespace cxx_auto
@@ -465,244 +488,225 @@ struct alignas(32) TypeElabFFI
          and ::cxx_auto::satisfy::cxx_is_displayable<T>;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CXX_AUTO_PRELUDE_SOURCE(SELF, SPEC)                                                                         \
-  namespace {                                                                                                       \
-  constexpr auto const type_spec_storage = ::cxx_auto::TypeSpecStorage<(SPEC).rs_lifetimes.size()>(spec);           \
-  }                                                                                                                 \
-  constexpr auto const type_spec = ::cxx_auto::TypeSpecFFI(type_spec_storage);                                      \
-  ::cxx_auto::TypeElabFFI const type_elab = {                                                                       \
-    .cxx_abi_align = alignof(SELF),                                                                                 \
-    .cxx_abi_size = sizeof(SELF),                                                                                   \
-    .rust_should_impl_cxx_extern_type_trivial = ::cxx_auto::derive::rust_should_impl_cxx_extern_type_trivial<SELF>, \
-    .rust_should_impl_unpin = ::cxx_auto::derive::rust_should_impl_unpin<SELF>,                                     \
-    .rust_should_impl_send = ::cxx_auto::derive::rust_should_impl_send<SELF>,                                       \
-    .rust_should_impl_sync = ::cxx_auto::derive::rust_should_impl_sync<SELF>,                                       \
-    .rust_should_impl_drop = ::cxx_auto::derive::rust_should_impl_drop<SELF>,                                       \
-    .rust_should_impl_copy = ::cxx_auto::derive::rust_should_impl_copy<SELF>,                                       \
-    .rust_should_impl_default = ::cxx_auto::derive::rust_should_impl_default<SELF>,                                 \
-    .rust_should_impl_moveref_copy_new = ::cxx_auto::derive::rust_should_impl_moveref_copy_new<SELF>,               \
-    .rust_should_impl_moveref_move_new = ::cxx_auto::derive::rust_should_impl_moveref_move_new<SELF>,               \
-    .rust_should_impl_eq = ::cxx_auto::derive::rust_should_impl_eq<SELF>,                                           \
-    .rust_should_impl_partial_eq = ::cxx_auto::derive::rust_should_impl_partial_eq<SELF>,                           \
-    .rust_should_impl_partial_ord = ::cxx_auto::derive::rust_should_impl_partial_ord<SELF>,                         \
-    .rust_should_impl_ord = ::cxx_auto::derive::rust_should_impl_ord<SELF>,                                         \
-    .rust_should_impl_hash = ::cxx_auto::derive::rust_should_impl_hash<SELF>,                                       \
-    .rust_should_impl_debug = ::cxx_auto::derive::rust_should_impl_debug<SELF>,                                     \
-    .rust_should_impl_display = ::cxx_auto::derive::rust_should_impl_display<SELF>,                                 \
-  };                                                                                                                \
-                                                                                                                    \
-  template<typename T, typename... Args>                                                                            \
-  auto                                                                                                              \
-  cxx_placement_new(T* This [[clang::lifetimebound]], Args&&... args) noexcept -> void                              \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_is_constructible<T, Args...>                                                  \
-  {                                                                                                                 \
-    new (This) T(::std::forward<Args>(args)...);                                                                    \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  auto                                                                                                              \
-  cxx_default_new(T* This [[clang::lifetimebound]]) noexcept -> void                                                \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_is_default_constructible<T>                                                   \
-  {                                                                                                                 \
-    cxx_placement_new(This);                                                                                        \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  auto                                                                                                              \
-  cxx_copy_new(T* This [[clang::lifetimebound]],                                                                    \
-               T const& that [[clang::lifetimebound]]) noexcept -> void                                             \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_is_copy_constructible<T>                                                      \
-  {                                                                                                                 \
-    new (This) T(that);                                                                                             \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  auto                                                                                                              \
-  cxx_move_new(T* This [[clang::lifetimebound]], T* that [[clang::lifetimebound]]) noexcept -> void                 \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_is_move_constructible<T>                                                      \
-  {                                                                                                                 \
-    new (This) T(::std::forward<T>(that));                                                                          \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  auto                                                                                                              \
-  cxx_destruct(T* This [[clang::lifetimebound]]) noexcept -> void                                                   \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_is_destructible<T>                                                            \
-  {                                                                                                                 \
-    ::std::destroy_at(This);                                                                                        \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_operator_equal(T const& This [[clang::lifetimebound]],                                                        \
-                     T const& That [[clang::lifetimebound]]) noexcept -> bool                                       \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_has_operator_equal<T>                                                         \
-  {                                                                                                                 \
-    return (This == That);                                                                                          \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_operator_not_equal(T const& This [[clang::lifetimebound]],                                                    \
-                         T const& That [[clang::lifetimebound]]) noexcept -> bool                                   \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_has_operator_not_equal<T>                                                     \
-  {                                                                                                                 \
-    return (This != That);                                                                                          \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_operator_less_than(T const& This [[clang::lifetimebound]],                                                    \
-                         T const& That [[clang::lifetimebound]]) noexcept -> bool                                   \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_has_operator_less_than<T>                                                     \
-  {                                                                                                                 \
-    return (This < That);                                                                                           \
-  }                                                                                                                 \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_operator_less_than_or_equal(T const& This [[clang::lifetimebound]],                                           \
-                                  T const& That [[clang::lifetimebound]]) noexcept -> bool                          \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_has_operator_less_than_or_equal<T>                                            \
-  {                                                                                                                 \
-    return (This <= That);                                                                                          \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_operator_greater_than(T const& This [[clang::lifetimebound]],                                                 \
-                            T const& That [[clang::lifetimebound]]) noexcept -> bool                                \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_has_operator_greater_than<T>                                                  \
-  {                                                                                                                 \
-    return (This > That);                                                                                           \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_operator_greater_than_or_equal(T const& This [[clang::lifetimebound]],                                        \
-                                     T const& That [[clang::lifetimebound]]) noexcept -> bool                       \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_has_operator_greater_than_or_equal<T>                                         \
-  {                                                                                                                 \
-    return (This >= That);                                                                                          \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]] [[gnu::always_inline]]                                                                              \
-  inline static auto                                                                                                \
-  cxx_operator_three_way_comparison(T const& This [[clang::lifetimebound]],                                         \
-                                    T const& That [[clang::lifetimebound]]) noexcept -> int8_t                      \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::detection::has_operator_three_way_comparison<T>                                            \
-  {                                                                                                                 \
-    auto result = (This <=> That);                                                                                  \
-    if (result < 0) {                                                                                               \
-      return -1;                                                                                                    \
-    } else if (result > 0) { /* NOLINT(llvm-else-after-return, readability-else-after-return) */                    \
-      return 1;                                                                                                     \
-    } else if (result == 0) {                                                                                       \
-      return 0;                                                                                                     \
-    } else {                                                                                                        \
-      return ::std::numeric_limits<int8_t>::max();                                                                  \
-    }                                                                                                               \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]] [[gnu::always_inline]]                                                                              \
-  inline static auto                                                                                                \
-  cxx_operator_three_way_comparison(T const& This [[clang::lifetimebound]],                                         \
-                                    T const& That [[clang::lifetimebound]]) noexcept -> int8_t                      \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and (not ::cxx_auto::detection::has_operator_three_way_comparison<T>)                                      \
-         and ::cxx_auto::detection::has_operator_less_than<T>                                                       \
-         and ::cxx_auto::detection::has_operator_equal<T>                                                           \
-  {                                                                                                                 \
-    auto le = (This < That);                                                                                        \
-    auto eq = (This == That);                                                                                       \
-    if (le and not eq) {                                                                                            \
-      return -1;                                                                                                    \
-    } else if (not le and not eq) { /* NOLINT(llvm-else-after-return, readability-else-after-return) */             \
-      return 1;                                                                                                     \
-    } else if (not le and eq) {                                                                                     \
-      return 0;                                                                                                     \
-    } else {                                                                                                        \
-      return ::std::numeric_limits<int8_t>::max();                                                                  \
-    }                                                                                                               \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_hash(T const& This [[clang::lifetimebound]]) noexcept -> size_t                                               \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_is_hashable<T>                                                                \
-  {                                                                                                                 \
-    return ::std::hash<T> {}(This);                                                                                 \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_debug(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::string                                      \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::satisfy::cxx_is_debuggable<T>                                                              \
-  {                                                                                                                 \
-    ::std::ostringstream os;                                                                                        \
-    os << This;                                                                                                     \
-    return ::rust::String::lossy(os.str());                                                                         \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                                    \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and ::cxx_auto::detection::has_operator_std_string_view<T>                                                 \
-  {                                                                                                                 \
-    return ::rust::String::lossy(::std::string { This.operator ::std::string_view() });                             \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                                    \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and (not ::cxx_auto::detection::has_operator_std_string_view<T>)                                           \
-         and ::cxx_auto::detection::has_operator_std_string<T>                                                      \
-  {                                                                                                                 \
-    return ::rust::String::lossy(This.operator ::std::string());                                                    \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                                    \
-    requires ::std::same_as<T, SELF>                                                                                \
-         and (not ::cxx_auto::detection::has_operator_std_string_view<T>)                                           \
-         and (not ::cxx_auto::detection::has_operator_std_string<T>)                                                \
-         and ::cxx_auto::detection::has_to_string<T>                                                                \
-  {                                                                                                                 \
-    return ::rust::String::lossy(::std::to_string(This));                                                           \
-  }                                                                                                                 \
-                                                                                                                    \
-  template<typename T>                                                                                              \
-  [[nodiscard]]                                                                                                     \
-  auto                                                                                                              \
-  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::string                                    \
-    requires ::std::same_as<T, SELF>                                                                                \
+#define CXX_AUTO_PRELUDE_SOURCE(SELF, SPEC)                                                               \
+  namespace {                                                                                             \
+  constexpr auto const type_spec_storage = ::cxx_auto::TypeSpecStorage<(SPEC).rs_lifetimes.size()>(spec); \
+  }                                                                                                       \
+  constexpr auto const type_spec = ::cxx_auto::TypeSpecFFI(type_spec_storage);                            \
+  constexpr ::cxx_auto::TypeElabFFI const type_elab = ::cxx_auto::TypeElabFFI::elab<SELF>();              \
+                                                                                                          \
+  template<typename T, typename... Args>                                                                  \
+  auto                                                                                                    \
+  cxx_placement_new(T* This [[clang::lifetimebound]], Args&&... args) noexcept -> void                    \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_is_constructible<T, Args...>                                        \
+  {                                                                                                       \
+    new (This) T(::std::forward<Args>(args)...);                                                          \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  auto                                                                                                    \
+  cxx_default_new(T* This [[clang::lifetimebound]]) noexcept -> void                                      \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_is_default_constructible<T>                                         \
+  {                                                                                                       \
+    cxx_placement_new(This);                                                                              \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  auto                                                                                                    \
+  cxx_copy_new(T* This [[clang::lifetimebound]],                                                          \
+               T const& that [[clang::lifetimebound]]) noexcept -> void                                   \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_is_copy_constructible<T>                                            \
+  {                                                                                                       \
+    new (This) T(that);                                                                                   \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  auto                                                                                                    \
+  cxx_move_new(T* This [[clang::lifetimebound]], T* that [[clang::lifetimebound]]) noexcept -> void       \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_is_move_constructible<T>                                            \
+  {                                                                                                       \
+    new (This) T(::std::forward<T>(that));                                                                \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  auto                                                                                                    \
+  cxx_destruct(T* This [[clang::lifetimebound]]) noexcept -> void                                         \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_is_destructible<T>                                                  \
+  {                                                                                                       \
+    ::std::destroy_at(This);                                                                              \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_operator_equal(T const& This [[clang::lifetimebound]],                                              \
+                     T const& That [[clang::lifetimebound]]) noexcept -> bool                             \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_has_operator_equal<T>                                               \
+  {                                                                                                       \
+    return (This == That);                                                                                \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_operator_not_equal(T const& This [[clang::lifetimebound]],                                          \
+                         T const& That [[clang::lifetimebound]]) noexcept -> bool                         \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_has_operator_not_equal<T>                                           \
+  {                                                                                                       \
+    return (This != That);                                                                                \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_operator_less_than(T const& This [[clang::lifetimebound]],                                          \
+                         T const& That [[clang::lifetimebound]]) noexcept -> bool                         \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_has_operator_less_than<T>                                           \
+  {                                                                                                       \
+    return (This < That);                                                                                 \
+  }                                                                                                       \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_operator_less_than_or_equal(T const& This [[clang::lifetimebound]],                                 \
+                                  T const& That [[clang::lifetimebound]]) noexcept -> bool                \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_has_operator_less_than_or_equal<T>                                  \
+  {                                                                                                       \
+    return (This <= That);                                                                                \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_operator_greater_than(T const& This [[clang::lifetimebound]],                                       \
+                            T const& That [[clang::lifetimebound]]) noexcept -> bool                      \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_has_operator_greater_than<T>                                        \
+  {                                                                                                       \
+    return (This > That);                                                                                 \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_operator_greater_than_or_equal(T const& This [[clang::lifetimebound]],                              \
+                                     T const& That [[clang::lifetimebound]]) noexcept -> bool             \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_has_operator_greater_than_or_equal<T>                               \
+  {                                                                                                       \
+    return (This >= That);                                                                                \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]] [[gnu::always_inline]]                                                                    \
+  inline static auto                                                                                      \
+  cxx_operator_three_way_comparison(T const& This [[clang::lifetimebound]],                               \
+                                    T const& That [[clang::lifetimebound]]) noexcept -> int8_t            \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::detection::has_operator_three_way_comparison<T>                                  \
+  {                                                                                                       \
+    auto result = (This <=> That);                                                                        \
+    if (result < 0) {                                                                                     \
+      return -1;                                                                                          \
+    } else if (result > 0) { /* NOLINT(llvm-else-after-return, readability-else-after-return) */          \
+      return 1;                                                                                           \
+    } else if (result == 0) {                                                                             \
+      return 0;                                                                                           \
+    } else {                                                                                              \
+      return ::std::numeric_limits<int8_t>::max();                                                        \
+    }                                                                                                     \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]] [[gnu::always_inline]]                                                                    \
+  inline static auto                                                                                      \
+  cxx_operator_three_way_comparison(T const& This [[clang::lifetimebound]],                               \
+                                    T const& That [[clang::lifetimebound]]) noexcept -> int8_t            \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and (not ::cxx_auto::detection::has_operator_three_way_comparison<T>)                            \
+         and ::cxx_auto::detection::has_operator_less_than<T>                                             \
+         and ::cxx_auto::detection::has_operator_equal<T>                                                 \
+  {                                                                                                       \
+    auto le = (This < That);                                                                              \
+    auto eq = (This == That);                                                                             \
+    if (le and not eq) {                                                                                  \
+      return -1;                                                                                          \
+    } else if (not le and not eq) { /* NOLINT(llvm-else-after-return, readability-else-after-return) */   \
+      return 1;                                                                                           \
+    } else if (not le and eq) {                                                                           \
+      return 0;                                                                                           \
+    } else {                                                                                              \
+      return ::std::numeric_limits<int8_t>::max();                                                        \
+    }                                                                                                     \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_hash(T const& This [[clang::lifetimebound]]) noexcept -> size_t                                     \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_is_hashable<T>                                                      \
+  {                                                                                                       \
+    return ::std::hash<T> {}(This);                                                                       \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_debug(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::string                            \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::satisfy::cxx_is_debuggable<T>                                                    \
+  {                                                                                                       \
+    ::std::ostringstream os;                                                                              \
+    os << This;                                                                                           \
+    return ::rust::String::lossy(os.str());                                                               \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                          \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and ::cxx_auto::detection::has_operator_std_string_view<T>                                       \
+  {                                                                                                       \
+    return ::rust::String::lossy(::std::string { This.operator ::std::string_view() });                   \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                          \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and (not ::cxx_auto::detection::has_operator_std_string_view<T>)                                 \
+         and ::cxx_auto::detection::has_operator_std_string<T>                                            \
+  {                                                                                                       \
+    return ::rust::String::lossy(This.operator ::std::string());                                          \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                          \
+    requires ::std::same_as<T, SELF>                                                                      \
+         and (not ::cxx_auto::detection::has_operator_std_string_view<T>)                                 \
+         and (not ::cxx_auto::detection::has_operator_std_string<T>)                                      \
+         and ::cxx_auto::detection::has_to_string<T>                                                      \
+  {                                                                                                       \
+    return ::rust::String::lossy(::std::to_string(This));                                                 \
+  }                                                                                                       \
+                                                                                                          \
+  template<typename T>                                                                                    \
+  [[nodiscard]]                                                                                           \
+  auto                                                                                                    \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::string                          \
+    requires ::std::same_as<T, SELF>                                                                      \
          and ::cxx_auto::satisfy::cxx_is_displayable<T>;
