@@ -8,6 +8,7 @@ module;
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <initializer_list>
 #include <iterator>
 #include <limits>
@@ -16,7 +17,7 @@ module;
 #include <ranges>
 #include <sstream>
 #include <string>
-// #include <string_view>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -24,8 +25,6 @@ export module cxx_auto.std;
 
 // NOLINTBEGIN(cert-dcl58-cpp, misc-unused-using-decls)
 export namespace std {
-using ::std::hash;
-
 // <algorithm>
 using ::std::transform;
 
@@ -50,6 +49,9 @@ using ::std::size_t;
 
 // <cstdint>
 using ::std::int8_t;
+
+// <functional>
+using ::std::hash;
 
 // <initializer_list>
 using ::std::initializer_list;
