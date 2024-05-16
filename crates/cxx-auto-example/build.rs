@@ -1,4 +1,4 @@
-use std::path::Path;
+use camino::Utf8Path;
 
 type BoxError = Box<dyn std::error::Error + Send + Sync + 'static>;
 type BoxResult<T> = Result<T, BoxError>;
@@ -28,9 +28,9 @@ fn main() -> BoxResult<()> {
     let objects = build.try_compile_intermediates()?;
 
     let out_dir = std::env::var("OUT_DIR")?;
-    let out_dir = Path::new(&out_dir);
+    let out_dir = Utf8Path::new(&out_dir);
 
-    cxx_auto_build::generate(&build, out_dir, &objects)?;
+    cxx_auto_build::generate(&build, out_dir, objects)?;
 
     println!("cargo::rerun-if-changed=cxx");
 

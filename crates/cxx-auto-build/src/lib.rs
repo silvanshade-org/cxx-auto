@@ -29,7 +29,10 @@
 extern crate alloc;
 
 use core::ffi::CStr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+
+use camino::{Utf8Path, Utf8PathBuf};
+use itertools::Itertools;
 
 type BoxError = Box<dyn std::error::Error + Send + Sync + 'static>;
 type BoxResult<T> = Result<T, BoxError>;
@@ -46,6 +49,8 @@ pub struct RawTypeSpecLifetime {
     pub bounds_len: usize,
 }
 
+// TODO: profile
+// NOTE: consider less aggressive validation depending profile results
 impl RawTypeSpecLifetime {
     fn validate(&self) -> BoxResult<TypeSpecLifetime> {
         // NOTE: C++ will use `nullptr` for empty data, but Rust's slice pointers must always be
@@ -88,6 +93,8 @@ pub struct RawTypeSpec {
     pub rs_lifetimes_len: usize,
 }
 
+// TODO: profile
+// NOTE: consider less aggressive validation depending profile results
 impl RawTypeSpec {
     unsafe fn validate(&self) -> BoxResult<TypeSpec> {
         let cc_name_ref = unsafe { self.cc_name.as_ref() }.ok_or_else(error_null_pointer)?;
@@ -159,34 +166,26 @@ pub struct TypeElab {
 /// # Panics
 ///
 /// Will return `Err` if auto-generation of the C++ bindings fails.
-pub fn generate(builder: &cc::Build, out_dir: &Path, objects: &[PathBuf]) -> crate::BoxResult<()> {
-    let cxx_auto_out = Path::new(&std::env::var("DEP_CXX_AUTO_CXXBRIDGE_DIR0")?).join("../..");
-    let cxx_auto_out = cxx_auto_out
-        .to_str()
-        .ok_or_else(|| BoxError::from("Path is not valid UTF-8: {}"))?;
-
+pub fn generate(builder: &cc::Build, out_dir: &Utf8Path, objects: Vec<PathBuf>) -> crate::BoxResult<()> {
+    let cxx_auto_out = Utf8Path::new(&std::env::var("DEP_CXX_AUTO_CXXBRIDGE_DIR0")?).join("../..");
     let compiler = builder.try_get_compiler()?;
-    #[allow(clippy::never_loop)]
-    for obj in objects
-        .iter()
-        .filter(|elem| elem.to_str().filter(|str| !str.ends_with(".rs.o")).is_some())
-    {
+    let mut objects = objects
+        .into_iter()
+        .map(Utf8PathBuf::from_path_buf)
+        .filter_ok(|elem| !elem.as_str().ends_with(".rs.o"))
+        .map(|res| res.map_err(|path| BoxError::from(format!("Path is not valid UTF-8: {}", path.display()))));
+    while let Some(obj) = objects.next().transpose()? {
         let lib = {
             let name = obj
                 .file_stem()
-                .ok_or_else(|| BoxError::from(format!("Cannot compute file_stem: {}", obj.display())))?
-                .to_str()
-                .ok_or_else(|| BoxError::from(format!("Path is not valid UTF-8: {}", obj.display())))?;
+                .ok_or_else(|| BoxError::from(format!("Cannot compute file_stem: {obj}")))?;
             out_dir.join(format!("lib{name}.so"))
         };
-        let lib = lib
-            .to_str()
-            .ok_or_else(|| BoxError::from(format!("Path is not valid UTF-8: {}", lib.display())))?;
         compiler
             .to_command()
-            .args(["-fvisibility=hidden", "-shared", "-o", lib])
+            .args(["-fvisibility=hidden", "-shared", "-o", lib.as_str()])
             .args([obj])
-            .args(["-L", cxx_auto_out, "-Wl,--exclude-libs,ALL", "-l", "cxx-auto"])
+            .args(["-L", cxx_auto_out.as_str(), "-Wl,--exclude-libs,ALL", "-l", "cxx-auto"])
             .status()?;
         let lib = unsafe { libloading::Library::new(lib)? };
         let type_spec = unsafe { lib.get::<*const RawTypeSpec>(b"type_spec")?.as_ref() }

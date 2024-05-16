@@ -12,8 +12,10 @@ categories = ["api-bindings", "compilers", "development-tools", "external-ffi-bi
 keywords = ["cxx", "c++", "clang", "gcc", "ffi", "codegen", "binding"]
 
 [dependencies]
+camino.workspace = true
 cc.workspace = true
 cxx-auto.workspace = true
+itertools = "0.12.1"
 libloading = { version = "0.8" }
 proc-macro2 = { version = "1.0", default-features = false }
 quote = { version = "1.0", default-features = false }

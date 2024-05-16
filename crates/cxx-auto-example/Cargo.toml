@@ -13,6 +13,7 @@ categories = ["api-bindings", "compilers", "development-tools", "external-ffi-bi
 keywords = ["cxx", "c++", "clang", "gcc", "ffi", "codegen", "binding"]
 
 [build-dependencies]
+camino.workspace = true
 cc.workspace = true
 cxx-auto.workspace = true
 cxx-auto-build.workspace = true
