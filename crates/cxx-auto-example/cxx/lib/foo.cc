@@ -5,15 +5,15 @@
 namespace example {
 // clang-format off
 constexpr ::cxx_auto::TypeSpec const spec = {
-  .cc_name = "Foo",
-  .cc_namespace = "example",
+  .cc_name = u8"Foo",
+  .cc_namespace = u8"example",
   .rs_lifetimes {
-    { .name = "a"
-    , .bounds { "a", "b" } },
-    { .name = "c"
-    , .bounds { "x" } },
-    { .name = "d"
-    , .bounds { "z", "h" } }
+    { .name = u8"a"
+    , .bounds { u8"a", u8"b" } },
+    { .name = u8"c"
+    , .bounds { u8"x" } },
+    { .name = u8"d"
+    , .bounds { u8"z", u8"h" } }
   }
 };
 // clang-format on

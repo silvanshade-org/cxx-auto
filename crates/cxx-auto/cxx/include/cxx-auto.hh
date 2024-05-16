@@ -253,8 +253,8 @@ concept rust_should_impl_display = satisfy::cxx_is_displayable<T>;
 namespace cxx_auto {
 struct alignas(32) TypeSpecLifetimeFFI
 {
-  char const* name;
-  char const* const* bounds_data;
+  char8_t const* name;
+  char8_t const* const* bounds_data;
   size_t bounds_len;
 };
 static_assert(derive::rust_should_impl_cxx_extern_type_trivial<TypeSpecLifetimeFFI>);
@@ -262,27 +262,27 @@ static_assert(derive::rust_should_impl_cxx_extern_type_trivial<TypeSpecLifetimeF
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 struct alignas(32) TypeSpecLifetime
 {
-  char const* name;
-  std::initializer_list<char const*> bounds = {}; // NOLINT(readability-redundant-member-init)
+  char8_t const* name;
+  std::initializer_list<char8_t const*> bounds = {}; // NOLINT(readability-redundant-member-init)
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 struct alignas(64) TypeSpec
 {
-  char const* cc_name;
-  char const* cc_namespace;
-  char const* rs_name = cc_name;
-  char const* rs_namespace = cc_namespace;
+  char8_t const* cc_name;
+  char8_t const* cc_namespace;
+  char8_t const* rs_name = cc_name;
+  char8_t const* rs_namespace = cc_namespace;
   std::initializer_list<TypeSpecLifetime> rs_lifetimes = {}; // NOLINT(readability-redundant-member-init)
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 struct alignas(64) TypeSpecFFI
 {
-  char const* cc_name;
-  char const* cc_namespace;
-  char const* rs_name;
-  char const* rs_namespace;
+  char8_t const* cc_name;
+  char8_t const* cc_namespace;
+  char8_t const* rs_name;
+  char8_t const* rs_namespace;
   TypeSpecLifetimeFFI const* rs_lifetimes_data;
   size_t rs_lifetimes_len;
 };
@@ -325,10 +325,10 @@ struct alignas(128) TypeSpecStorage
   }
 
 private:
-  char const* cc_name;
-  char const* cc_namespace;
-  char const* rs_name = cc_name;
-  char const* rs_namespace = cc_namespace;
+  char8_t const* cc_name;
+  char8_t const* cc_namespace;
+  char8_t const* rs_name = cc_name;
+  char8_t const* rs_namespace = cc_namespace;
   std::initializer_list<TypeSpecLifetime> rs_lifetimes;
   std::array<TypeSpecLifetimeFFI, len> rs_lifetimes_ffi;
 };
