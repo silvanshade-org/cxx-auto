@@ -110,7 +110,7 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CXX_AUTO_PRELUDE_SOURCE_EXTERN(SELF, SPEC)                                                               \
   namespace {                                                                                                    \
-  inline constexpr auto const type_spec_storage = ::cxx_auto::TypeSpecStorage<(SPEC).rs_lifetimes.size()>(spec); \
+  inline constexpr auto const type_spec_storage = ::cxx_auto::TypeSpecStorage<(SPEC).rs_lifetimes.size()>(SPEC); \
   }                                                                                                              \
   inline constexpr auto const type_spec = ::cxx_auto::TypeSpecFFI(type_spec_storage);                            \
   inline constexpr ::cxx_auto::TypeElabFFI const type_elab = ::cxx_auto::TypeElabFFI::elab<SELF>();

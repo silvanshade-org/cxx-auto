@@ -31,6 +31,7 @@ endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(cxx-auto PUBLIC
     -fmodules
+    -fretain-comments-from-system-headers # clangd will complain about mismatch otherwise: https://github.com/clangd/clangd/issues/1105
     -Wno-c99-extensions
     -Wno-dollar-in-identifier-extension
   )
@@ -43,6 +44,7 @@ target_include_directories(cxx-auto-example PUBLIC
 )
 target_sources(cxx-auto-example PUBLIC
   crates/cxx-auto-example/cxx/foo.cpp
+  crates/cxx-auto-example/cxx/foo_spec.cpp
 )
 target_sources(cxx-auto-example PUBLIC
   FILE_SET CXX_MODULES FILES
@@ -63,6 +65,7 @@ endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(cxx-auto-example PUBLIC
     -fmodules
+    -fretain-comments-from-system-headers # clangd will complain about mismatch otherwise: https://github.com/clangd/clangd/issues/1105
     -Wno-c99-extensions
     -Wno-dollar-in-identifier-extension
   )
