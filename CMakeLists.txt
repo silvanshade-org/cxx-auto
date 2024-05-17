@@ -1,11 +1,8 @@
-# NOTE: run with `cmake -G Ninja -S . -B build && cmake --build build`
-
-cmake_minimum_required(VERSION 3.28.0)
+cmake_minimum_required(VERSION 3.29.0)
 
 project(cxx-auto LANGUAGES CXX)
 
-# export CMake configuration to compile_commands.json for IDE support
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
 add_library(cxx-auto STATIC)
 target_sources(cxx-auto PUBLIC
@@ -44,6 +41,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -Wno-dollar-in-identifier-extension
   )
 endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  target_compile_options(cxx-auto PUBLIC
+    -fmodules-ts
+    -Wno-error=attributes
+    -Wno-attributes
+  )
+endif()
 
 add_library(cxx-auto-example STATIC)
 target_sources(cxx-auto-example PUBLIC
@@ -77,5 +81,12 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -fretain-comments-from-system-headers # clangd will complain about mismatch otherwise: https://github.com/clangd/clangd/issues/1105
     -Wno-c99-extensions
     -Wno-dollar-in-identifier-extension
+  )
+endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  target_compile_options(cxx-auto-example PUBLIC
+    -fmodules-ts
+    -Wno-error=attributes
+    -Wno-attributes
   )
 endif()
