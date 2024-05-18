@@ -264,7 +264,7 @@ Lifetime final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-ini
 // This proposal (https://wg21.link/P2752R3) may be relevant, but although it is supposed to be
 // implemented in GCC 14, it does not appear to make a difference.
 export template<std::size_t l_len, std::size_t b_len>
-struct [[gnu::aligned(32)]]
+struct [[gnu::aligned(64)]]
 Data final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 {
   char8_t const* cc_name;
