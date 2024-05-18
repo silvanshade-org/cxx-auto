@@ -19,8 +19,14 @@ target_sources(cxx-auto PUBLIC
     ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx
   FILES
     ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/cxx-auto.cppm
-    ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/common/std.cppm
-    ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/common/third_party/rust.cppm
+    ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/derive.cppm
+    ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/detection.cppm
+    ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/ffi.cppm
+    ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/ffi/elaboration.cppm
+    ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/ffi/specification.cppm
+    ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/satisfy.cppm
+    ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/lib/std.cppm
+    ${PROJECT_SOURCE_DIR}/crates/cxx-auto/cxx/cxx-auto/lib/third_party/rust.cppm
 )
 set_target_properties(cxx-auto PROPERTIES
   CXX_STANDARD 23
