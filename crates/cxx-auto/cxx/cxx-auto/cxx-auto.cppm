@@ -368,12 +368,6 @@ public:
   }
 };
 
-inline constexpr auto spec = TypeSpec<0, 0>({
-  .cc_name = u8"",
-  .cc_namespace = u8"",
-});
-inline constexpr auto ffi = spec.ffi();
-
 export struct alignas(32) TypeElabFFI final
 {
   std::size_t cxx_abi_align;
