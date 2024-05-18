@@ -271,7 +271,7 @@ Data final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
   char8_t const* cc_namespace;
   char8_t const* rs_name {};
   char8_t const* rs_namespace {};
-  std::array<Lifetime<b_len>, l_len> rs_lifetimes {}; // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
+  std::array<Lifetime<b_len>, l_len> rs_lifetimes {};
 };
 
 export struct alignas(64) FFI final
@@ -289,14 +289,12 @@ static_assert(derive::rust_should_impl_cxx_extern_type_trivial<type_spec::FFI>);
 }; // namespace type_spec
 
 export template<std::size_t l_len = 0, std::size_t b_len = 0>
-struct TypeSpec final
+struct [[gnu::aligned(128)]]
+TypeSpec final
 {
 private:
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic" // Silence warnings about zero-length arrays
   type_spec::Data<l_len, b_len> data;
-  type_spec::lifetime::FFI rs_lifetimes_data[l_len] {}; // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
-#pragma GCC diagnostic pop
+  std::array<type_spec::lifetime::FFI, l_len> rs_lifetimes_data {};
 
 public:
   explicit inline constexpr TypeSpec(type_spec::Data<l_len, b_len>&& data)
@@ -316,7 +314,7 @@ public:
       .cc_namespace = this->data.cc_namespace,
       .rs_name = this->data.rs_name,
       .rs_namespace = this->data.rs_namespace,
-      .rs_lifetimes_data = this->rs_lifetimes_data, // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay, hicpp-no-array-decay)
+      .rs_lifetimes_data = this->rs_lifetimes_data.data(), // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay, hicpp-no-array-decay)
       .rs_lifetimes_len = l_len,
     };
     // ffi.validate();
