@@ -225,7 +225,7 @@ concept rust_should_impl_display = satisfy::cxx_is_displayable<T>;
 namespace cxx_auto {
 namespace type_spec {
 namespace lifetime {
-export struct alignas(32) FFI
+export struct alignas(32) FFI final
 {
   char8_t const* name;
   char8_t const* const* bounds_data;
@@ -235,7 +235,7 @@ static_assert(derive::rust_should_impl_cxx_extern_type_trivial<FFI>);
 } // namespace lifetime
 
 export template<std::size_t b_len>
-struct Lifetime // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
+struct Lifetime final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 {
   // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
   char8_t const* name;
@@ -258,7 +258,7 @@ struct Lifetime // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-in
 
 export template<std::size_t l_len, std::size_t b_len>
 struct [[gnu::aligned(32)]]
-Data // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
+Data final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 {
   char8_t const* cc_name;
   char8_t const* cc_namespace;
@@ -270,7 +270,7 @@ Data // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 #pragma GCC diagnostic pop
 };
 
-export struct alignas(64) FFI
+export struct alignas(64) FFI final
 {
   // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
   char8_t const* cc_name;
@@ -285,7 +285,7 @@ static_assert(derive::rust_should_impl_cxx_extern_type_trivial<type_spec::FFI>);
 }; // namespace type_spec
 
 export template<std::size_t l_len = 0, std::size_t b_len = 0>
-struct TypeSpec
+struct TypeSpec final
 {
 private:
 #pragma GCC diagnostic push
@@ -372,7 +372,7 @@ inline constexpr auto spec = TypeSpec<0, 0>({
 });
 inline constexpr auto ffi = spec.ffi();
 
-export struct alignas(32) TypeElabFFI
+export struct alignas(32) TypeElabFFI final
 {
   std::size_t cxx_abi_align;
   std::size_t cxx_abi_size;
