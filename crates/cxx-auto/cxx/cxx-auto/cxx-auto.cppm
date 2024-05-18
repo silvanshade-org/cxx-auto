@@ -254,19 +254,15 @@ Lifetime final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-ini
   }
 };
 
-// NOTE: We should really be using `std::initializer_list` rather than C-arrays here since they
-// would allow us to erase the size parameters. In clang, using `std::initializer_list` does work,
-// but in GCC it does not.
+// NOTE: We should really be using `std::initializer_list` rather than arrays here since they would
+// allow us to erase the size parameters. In clang, using `std::initializer_list` does work, but in
+// GCC it does not.
 //
 // The problem GCC complains about is: "pointer to subobject of temporary is not a constant
 // expression", specifically for the bounds aggregate.
 //
 // This proposal (https://wg21.link/P2752R3) may be relevant, but although it is supposed to be
 // implemented in GCC 14, it does not appear to make a difference.
-//
-// NOTE: We would also prefer to use `std::array` to C-arrays, but they fail with the same issue as
-// the `std::initializer_list` case (in GCC), with an error about "pointer to subobject of
-// temporary".
 export template<std::size_t l_len, std::size_t b_len>
 struct [[gnu::aligned(32)]]
 Data final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
@@ -275,10 +271,7 @@ Data final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
   char8_t const* cc_namespace;
   char8_t const* rs_name {};
   char8_t const* rs_namespace {};
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic" // Silence warnings about zero-length arrays
-  Lifetime<b_len> rs_lifetimes[l_len] {};   // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
-#pragma GCC diagnostic pop
+  std::array<Lifetime<b_len>, l_len> rs_lifetimes {}; // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
 };
 
 export struct alignas(64) FFI final

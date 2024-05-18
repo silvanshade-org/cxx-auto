@@ -16,7 +16,7 @@ export class Foo
 export inline constexpr auto const spec = ::cxx_auto::TypeSpec<3, 2>({
   .cc_name = u8"Foo",
   .cc_namespace = u8"example",
-  .rs_lifetimes = {
+  .rs_lifetimes = {{
     { .name = u8"a"
     , .bounds { u8"a", u8"b" } },
     { .name = u8"c"
@@ -24,7 +24,7 @@ export inline constexpr auto const spec = ::cxx_auto::TypeSpec<3, 2>({
     { .name = u8"d"
     , .bounds { u8"z", u8"h" } }
   }
-});
+}});
 // clang-format on
 
 CXX_AUTO_PRELUDE_HEADER(Foo)
