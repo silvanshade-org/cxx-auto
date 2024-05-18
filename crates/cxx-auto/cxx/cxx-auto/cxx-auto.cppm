@@ -239,10 +239,7 @@ struct Lifetime final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-mem
 {
   // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
   char8_t const* name;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic" // Silence warnings about zero-length arrays
-  char8_t const* bounds[b_len] {};          // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
-#pragma GCC diagnostic pop
+  std::array<char8_t const*, b_len> bounds {};
   // NOLINTEND(misc-non-private-member-variables-in-classes)
 
   [[nodiscard]]
@@ -250,7 +247,7 @@ struct Lifetime final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-mem
   {
     return {
       .name = this->name,
-      .bounds_data = this->bounds, // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay, hicpp-no-array-decay)
+      .bounds_data = this->bounds.data(), // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay, hicpp-no-array-decay)
       .bounds_len = b_len,
     };
   }
