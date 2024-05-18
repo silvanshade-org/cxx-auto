@@ -239,7 +239,10 @@ struct Lifetime // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-in
 {
   // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
   char8_t const* name;
-  char8_t const* bounds[b_len] {}; // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic" // Silence warnings about zero-length arrays
+  char8_t const* bounds[b_len] {};          // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
+#pragma GCC diagnostic pop
   // NOLINTEND(misc-non-private-member-variables-in-classes)
 
   [[nodiscard]]
@@ -261,7 +264,10 @@ Data // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
   char8_t const* cc_namespace;
   char8_t const* rs_name {};
   char8_t const* rs_namespace {};
-  Lifetime<b_len> rs_lifetimes[l_len] {}; // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic" // Silence warnings about zero-length arrays
+  Lifetime<b_len> rs_lifetimes[l_len] {};   // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
+#pragma GCC diagnostic pop
 };
 
 export struct alignas(64) FFI
@@ -282,8 +288,11 @@ export template<std::size_t l_len = 0, std::size_t b_len = 0>
 struct TypeSpec
 {
 private:
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic" // Silence warnings about zero-length arrays
   type_spec::Data<l_len, b_len> data;
   type_spec::lifetime::FFI rs_lifetimes_data[l_len] {}; // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
+#pragma GCC diagnostic pop
 
 public:
   explicit inline constexpr TypeSpec(type_spec::Data<l_len, b_len>&& data)
