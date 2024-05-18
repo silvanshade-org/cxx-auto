@@ -9,7 +9,6 @@ module;
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <initializer_list>
 #include <iterator>
 #include <limits>
 #include <memory>
@@ -53,9 +52,6 @@ using ::std::int8_t;
 
 // <functional>
 using ::std::hash;
-
-// <initializer_list>
-using ::std::initializer_list;
 
 // <iterator>
 using ::std::input_iterator;
