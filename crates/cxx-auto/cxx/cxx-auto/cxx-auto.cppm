@@ -235,7 +235,8 @@ static_assert(derive::rust_should_impl_cxx_extern_type_trivial<FFI>);
 } // namespace lifetime
 
 export template<std::size_t b_len>
-struct Lifetime final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
+struct [[gnu::aligned(16)]]
+Lifetime final // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 {
   // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
   char8_t const* name;
