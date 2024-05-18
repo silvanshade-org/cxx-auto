@@ -1,5 +1,5 @@
 ---
-Checks: "clang-diagnostic-*,clang-analyzer-*,*,*,-bugprone-easily-swappable-parameters,-cert-err58-cpp,-cppcoreguidelines-avoid-magic-numbers,-fuchsia-default-arguments-calls,-fuchsia-statically-constructed-objects,-fuchsia-trailing-return,-llvmlibc-callee-namespace,-llvmlibc-implementation-in-namespace,-llvmlibc-restrict-system-libc-headers,-readability-identifier-length,-readability-magic-numbers"
+Checks: "clang-diagnostic-*,clang-analyzer-*,*,*,-altera-unroll-loops,-bugprone-easily-swappable-parameters,-cert-err58-cpp,-cppcoreguidelines-avoid-magic-numbers,-fuchsia-default-arguments-calls,-fuchsia-statically-constructed-objects,-fuchsia-trailing-return,-llvmlibc-callee-namespace,-llvmlibc-implementation-in-namespace,-llvmlibc-restrict-system-libc-headers,-readability-identifier-length,-readability-magic-numbers"
 WarningsAsErrors: ""
 HeaderFileExtensions:
   - ""

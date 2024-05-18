@@ -37,8 +37,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(cxx-auto PUBLIC
     -fmodules
     -fretain-comments-from-system-headers # clangd will complain about mismatch otherwise: https://github.com/clangd/clangd/issues/1105
+    -Wno-c++20-compat
     -Wno-c99-extensions
-    -Wno-dollar-in-identifier-extension
+    -Wno-zero-length-array
   )
 endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -79,8 +80,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(cxx-auto-example PUBLIC
     -fmodules
     -fretain-comments-from-system-headers # clangd will complain about mismatch otherwise: https://github.com/clangd/clangd/issues/1105
-    -Wno-c99-extensions
-    -Wno-dollar-in-identifier-extension
   )
 endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

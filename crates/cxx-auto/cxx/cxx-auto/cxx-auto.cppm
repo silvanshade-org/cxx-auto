@@ -223,85 +223,145 @@ concept rust_should_impl_display = satisfy::cxx_is_displayable<T>;
 } // namespace cxx_auto::derive
 
 namespace cxx_auto {
-export struct alignas(32) TypeSpecLifetimeFFI
+namespace type_spec {
+namespace lifetime {
+export struct alignas(32) FFI
 {
   char8_t const* name;
   char8_t const* const* bounds_data;
   std::size_t bounds_len;
 };
-static_assert(derive::rust_should_impl_cxx_extern_type_trivial<TypeSpecLifetimeFFI>);
+static_assert(derive::rust_should_impl_cxx_extern_type_trivial<FFI>);
+} // namespace lifetime
 
-// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
-export struct alignas(32) TypeSpecLifetime
+export template<std::size_t b_len>
+struct Lifetime // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 {
+  // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
   char8_t const* name;
-  std::initializer_list<char8_t const*> bounds = {}; // NOLINT(readability-redundant-member-init)
+  char8_t const* bounds[b_len] {}; // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
+  // NOLINTEND(misc-non-private-member-variables-in-classes)
+
+  [[nodiscard]]
+  inline constexpr auto ffi() const -> lifetime::FFI
+  {
+    return {
+      .name = this->name,
+      .bounds_data = this->bounds, // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay, hicpp-no-array-decay)
+      .bounds_len = b_len,
+    };
+  }
 };
 
-// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
-export struct alignas(64) TypeSpec
+export template<std::size_t l_len, std::size_t b_len>
+struct [[gnu::aligned(32)]]
+Data // NOLINT(cppcoreguidelines-pro-type-member-init,hicpp-member-init)
 {
   char8_t const* cc_name;
   char8_t const* cc_namespace;
-  char8_t const* rs_name = u8"";
-  char8_t const* rs_namespace = u8"";
-  std::initializer_list<TypeSpecLifetime> rs_lifetimes = {}; // NOLINT(readability-redundant-member-init)
+  char8_t const* rs_name {};
+  char8_t const* rs_namespace {};
+  Lifetime<b_len> rs_lifetimes[l_len] {}; // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
 };
 
-export struct alignas(64) TypeSpecFFI
+export struct alignas(64) FFI
 {
+  // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
   char8_t const* cc_name;
   char8_t const* cc_namespace;
   char8_t const* rs_name;
   char8_t const* rs_namespace;
-  TypeSpecLifetimeFFI const* rs_lifetimes_data;
+  type_spec::lifetime::FFI const* rs_lifetimes_data;
   std::size_t rs_lifetimes_len;
+  // NOLINTEND(misc-non-private-member-variables-in-classes)
 };
-static_assert(derive::rust_should_impl_cxx_extern_type_trivial<TypeSpecFFI>);
+static_assert(derive::rust_should_impl_cxx_extern_type_trivial<type_spec::FFI>);
+}; // namespace type_spec
 
-export template<std::size_t len>
-struct alignas(128) TypeSpecStorage
+export template<std::size_t l_len = 0, std::size_t b_len = 0>
+struct TypeSpec
 {
-  explicit inline consteval TypeSpecStorage(TypeSpec const& init)
-    : cc_name(init.cc_name)
-    , cc_namespace(init.cc_namespace)
-    , rs_name(init.rs_name)
-    , rs_namespace(init.rs_namespace)
-    , rs_lifetimes(init.rs_lifetimes)
-  {
-    std::transform(
-      rs_lifetimes.begin(),
-      rs_lifetimes.end(),
-      rs_lifetimes_ffi.begin(),
-      [&](TypeSpecLifetime const& elem) -> TypeSpecLifetimeFFI {
-        return {
-          .name = elem.name,
-          .bounds_data = elem.bounds.begin(),
-          .bounds_len = elem.bounds.size(),
-        };
-      });
-  }
-
-  explicit inline consteval operator TypeSpecFFI() const
-  {
-    return {
-      .cc_name = this->cc_name,
-      .cc_namespace = this->cc_namespace,
-      .rs_name = this->rs_name,
-      .rs_namespace = this->rs_namespace,
-      .rs_lifetimes_data = this->rs_lifetimes_ffi.data(),
-      .rs_lifetimes_len = this->rs_lifetimes_ffi.size(),
-    };
-  }
-
 private:
-  char8_t const* cc_name;
-  char8_t const* cc_namespace;
-  char8_t const* rs_name = u8"";
-  char8_t const* rs_namespace = u8"";
-  std::initializer_list<TypeSpecLifetime> rs_lifetimes;
-  std::array<TypeSpecLifetimeFFI, len> rs_lifetimes_ffi;
+  type_spec::Data<l_len, b_len> data;
+  type_spec::lifetime::FFI rs_lifetimes_data[l_len] {}; // NOLINT(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays, modernize-avoid-c-arrays)
+
+public:
+  explicit inline constexpr TypeSpec(type_spec::Data<l_len, b_len>&& data)
+    : data(data)
+  {
+    for (std::size_t i = 0; i < l_len; ++i) {
+      this->rs_lifetimes_data[i] = this->data.rs_lifetimes[i].ffi(); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+    }
+    this->validate();
+  }
+
+  [[nodiscard]]
+  inline constexpr auto ffi() const -> type_spec::FFI
+  {
+    auto const& ffi = type_spec::FFI {
+      .cc_name = this->data.cc_name,
+      .cc_namespace = this->data.cc_namespace,
+      .rs_name = this->data.rs_name,
+      .rs_namespace = this->data.rs_namespace,
+      .rs_lifetimes_data = this->rs_lifetimes_data, // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay, hicpp-no-array-decay)
+      .rs_lifetimes_len = l_len,
+    };
+    // ffi.validate();
+    return ffi;
+  }
+
+  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+  inline constexpr void validate() const
+  {
+    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index)
+    if (nullptr == this->data.cc_name) {
+      throw std::runtime_error("invalid empty `cc_name`");
+    }
+    if (nullptr == this->data.cc_namespace) {
+      throw std::runtime_error("invalid empty `cc_namespace`");
+    }
+    for (std::size_t i = 0; i < l_len; ++i) {
+      if (nullptr == this->rs_lifetimes_data[i].name) {
+        throw std::runtime_error("invalid NULL lifetime `name`");
+      }
+      if ('\0' == this->rs_lifetimes_data[i].name[0]) {
+        throw std::runtime_error("invalid empty lifetime `name`");
+      }
+      std::size_t j = 0;
+      for (; j < this->rs_lifetimes_data[i].bounds_len; ++j) {
+        // if we encounter a `nullptr` for a bound...
+        if (nullptr == this->rs_lifetimes_data[i].bounds_data[j]) {
+          // ... then ensure all the remaining are also `nullptr`
+          while (j < this->rs_lifetimes_data[i].bounds_len) {
+            if (nullptr != this->rs_lifetimes_data[i].bounds_data[j]) {
+              throw std::runtime_error("invalid bounds array (contains non-NULL after initial NULL)");
+            }
+            ++j;
+          }
+          break;
+        }
+        // rule-out empty strings for bound
+        if ('\0' == this->rs_lifetimes_data[i].bounds_data[j][0]) {
+          throw std::runtime_error("invalid NULL empty lifetime bound");
+        }
+      }
+      // ensure all remaining bounds (including the first) are `nullptr`
+      while (j < this->rs_lifetimes_data[i].bounds_len) {
+        if (nullptr != this->rs_lifetimes_data[i].bounds_data[j]) {
+          throw std::runtime_error("invalid bounds array (contains non-NULL after initial NULL)");
+        }
+        ++j;
+      }
+    }
+    // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-constant-array-index)
+  }
 };
+
+inline constexpr auto spec = TypeSpec<0, 0>({
+  .cc_name = u8"",
+  .cc_namespace = u8"",
+});
+inline constexpr auto ffi = spec.ffi();
 
 export struct alignas(32) TypeElabFFI
 {

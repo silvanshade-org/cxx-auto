@@ -16,6 +16,7 @@ module;
 #include <ostream>
 #include <ranges>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -75,7 +76,10 @@ namespace ranges {
 using ::std::ranges::input_range;
 using ::std::ranges::iterator_t;
 using ::std::ranges::range;
-}; // namespace ranges
+} // namespace ranges
+
+// <stdexcept>
+using ::std::runtime_error;
 
 // <sstream>
 using ::std::basic_ostringstream;
