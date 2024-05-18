@@ -93,7 +93,21 @@
   auto                                                                                              \
   cxx_hash(T const& This [[clang::lifetimebound]]) noexcept -> std::size_t                          \
     requires ::std::same_as<T, SELF>                                                                \
-         and ::cxx_auto::satisfy::cxx_is_hashable<T>;
+         and ::cxx_auto::satisfy::cxx_is_hashable<T>;                                               \
+                                                                                                    \
+  export template<typename T>                                                                       \
+  [[nodiscard]]                                                                                     \
+  auto                                                                                              \
+  cxx_debug(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                      \
+    requires ::std::same_as<T, SELF>                                                                \
+         and ::cxx_auto::satisfy::cxx_is_debuggable<T>;                                             \
+                                                                                                    \
+  export template<typename T>                                                                       \
+  [[nodiscard]]                                                                                     \
+  auto                                                                                              \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                    \
+    requires ::std::same_as<T, SELF>                                                                \
+         and ::cxx_auto::satisfy::cxx_is_displayable<T>;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CXX_AUTO_PRELUDE_SOURCE(SELF)                                                                   \
@@ -259,4 +273,56 @@
          and ::cxx_auto::satisfy::cxx_is_hashable<T>                                                    \
   {                                                                                                     \
     return ::std::hash<T> {}(This);                                                                     \
-  }
+  }                                                                                                     \
+                                                                                                        \
+  template<typename T>                                                                                  \
+  [[nodiscard]]                                                                                         \
+  auto                                                                                                  \
+  cxx_debug(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                          \
+    requires ::std::same_as<T, SELF>                                                                    \
+         and ::cxx_auto::satisfy::cxx_is_debuggable<T>                                                  \
+  {                                                                                                     \
+    ::std::ostringstream os;                                                                            \
+    os << This;                                                                                         \
+    return ::rust::String::lossy(os.str());                                                             \
+  }                                                                                                     \
+                                                                                                        \
+  template<typename T>                                                                                  \
+  [[nodiscard]]                                                                                         \
+  auto                                                                                                  \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                        \
+    requires ::std::same_as<T, SELF>                                                                    \
+         and ::cxx_auto::detection::has_operator_std_string_view<T>                                     \
+  {                                                                                                     \
+    return ::rust::String::lossy(::std::string { This.operator ::std::string_view() });                 \
+  }                                                                                                     \
+                                                                                                        \
+  template<typename T>                                                                                  \
+  [[nodiscard]]                                                                                         \
+  auto                                                                                                  \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                        \
+    requires ::std::same_as<T, SELF>                                                                    \
+         and (not ::cxx_auto::detection::has_operator_std_string_view<T>)                               \
+         and ::cxx_auto::detection::has_operator_std_string<T>                                          \
+  {                                                                                                     \
+    return ::rust::String::lossy(This.operator ::std::string());                                        \
+  }                                                                                                     \
+                                                                                                        \
+  template<typename T>                                                                                  \
+  [[nodiscard]]                                                                                         \
+  auto                                                                                                  \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                        \
+    requires ::std::same_as<T, SELF>                                                                    \
+         and (not ::cxx_auto::detection::has_operator_std_string_view<T>)                               \
+         and (not ::cxx_auto::detection::has_operator_std_string<T>)                                    \
+         and ::cxx_auto::detection::has_to_string<T>                                                    \
+  {                                                                                                     \
+    return ::rust::String::lossy(::std::to_string(This));                                               \
+  }                                                                                                     \
+                                                                                                        \
+  template<typename T>                                                                                  \
+  [[nodiscard]]                                                                                         \
+  auto                                                                                                  \
+  cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> ::rust::String                        \
+    requires ::std::same_as<T, SELF>                                                                    \
+         and ::cxx_auto::satisfy::cxx_is_displayable<T>;
