@@ -1,6 +1,9 @@
-// NOTE: cxx-build an empty bridge so that `cxx/include/**/*.hxx` is exported to dependencies
+// NOTE: cxx-build an empty bridge so that `cxx/include/**/*.hxx` is exported to
+// dependencies
+/// Generate CXX vector and unique-pointer glue for the C character wrapper.
 #[cxx::bridge]
-mod ffi {
+mod ffi
+{
     extern "C++" {
         include!("cxx-auto/cxx/include/cxx-auto.hxx");
 
@@ -8,8 +11,10 @@ mod ffi {
         type _c_char = crate::ffi::ctypes::c_char;
     }
 
-    impl CxxVector<_c_char> {
+    impl CxxVector<_c_char>
+    {
     }
-    impl UniquePtr<_c_char> {
+    impl UniquePtr<_c_char>
+    {
     }
 }

@@ -1,1 +1,1 @@
-#include "cxx-auto/cxx/include/cxx-auto.hxx"
+#include "cxx-auto.hxx"

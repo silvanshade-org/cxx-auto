@@ -1,153 +1,227 @@
+# <critical>
+# MUST preserve anchor-first CI: maximal sharing, no copied orchestration.
+# Reuse template anchors and parameterize compiler and image differences.
+# Keep Rust, C++ front ends, formatting, and workflow lint parallel.
+# </critical>
 name: ci
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+  merge_group:
 
 env:
+  CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
-  LLVM_VERSION: 16
+  # Local hook, index, and act tools do not belong in the hosted tool subset.
+  # This list is identical to the Dockerfile's image build environment.
+  MISE_DISABLE_TOOLS: github:colbymchenry/codegraph,github:max-sixty/worktrunk,github:j178/prek,github:nektos/act,github:woodruffw/zizmor,npm:@commitlint/cli
+
+permissions:
+  contents: read
 
 jobs:
-  cargo-deny:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        checks:
-          - advisories
-          - bans licenses sources
-    continue-on-error: ${{ matrix.checks == 'advisories' }}
+  template:
+    if: false
+    runs-on: &linux ubuntu-24.04
+    permissions: &image-read-permissions
+      contents: read
+      packages: read
     steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
+      - &checkout
+        name: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - uses: EmbarkStudios/cargo-deny-action@v1
+          persist-credentials: false
+      - &setup-cpp
+        name: set up C++26 compiler
+        # The checked-out branch supplies this action; no remote ref is involved.
+        uses: ./.github/actions/setup-cpp # zizmor: ignore[self-repository]
         with:
-          command: check ${{ matrix.checks }}
+          install: ${{ needs.image-ref.outputs.image == '' }}
+      - &setup-rust
+        name: set up pinned Rust toolchain and cache
+        # The checked-out branch supplies this action; no remote ref is involved.
+        uses: ./.github/actions/setup-rust # zizmor: ignore[self-repository]
+        with:
+          install-toolchain: ${{ needs.image-ref.outputs.image == '' }}
+          cache-save: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.job == 'rust-test' }}
+          cache-workspace-crates: "true"
+      - &setup-mise
+        name: set up pinned tools
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: "2026.9.14"
+          install: ${{ needs.image-ref.outputs.image == '' }}
+          cache_save: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.job == 'rust-test' }}
 
-  cargo-fmt:
-    runs-on: ubuntu-latest
+  image-ref:
+    runs-on: *linux
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
     steps:
-      - uses: actions/checkout@v3
-      - run: echo "RUST_NIGHTLY_TOOLCHAIN=$(awk '/^channel\s*=\s*".*"$/ { print gensub(/"(.*)"/, "\\1", "g", $3); }' rust-toolchain.toml)" >> $GITHUB_ENV
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_NIGHTLY_TOOLCHAIN }}
-          components: rustfmt
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo +${{ env.RUST_NIGHTLY_TOOLCHAIN }} fmt --all -- --check
+      - id: ref
+        name: relay optional prebuilt image to container jobs
+        env:
+          CXX_AUTO_CI_IMAGE: ${{ vars.CXX_AUTO_CI_IMAGE }}
+        run: echo "image=$CXX_AUTO_CI_IMAGE" >> "$GITHUB_OUTPUT"
 
-  cargo-clippy:
-    runs-on: ubuntu-latest
+  changes:
+    runs-on: *linux
+    outputs:
+      rust: ${{ github.event_name == 'merge_group' || steps.filter.outcome != 'success' || steps.filter.outputs.rust == 'true' }}
     steps:
-      - run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          echo "deb     http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" | sudo tee --append /etc/apt/sources.list.d/llvm.list
-          echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" | sudo tee --append /etc/apt/sources.list.d/llvm.list
-          sudo apt-get update -o Dir::Etc::sourcelist="sources.list.d/llvm.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
-      - uses: awalsh128/cache-apt-pkgs-action@latest
+      - name: checkout history for path filter
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          packages: clang-16 clang-format-16 clang-tidy-16 clang-tools-16 clangd-16 libclang-16-dev libclang-common-16-dev libclang1-16
-          version: 1.0
-      - uses: actions/checkout@v3
-      - run: echo "RUST_NIGHTLY_TOOLCHAIN=$(awk '/^channel\s*=\s*".*"$/ { print gensub(/"(.*)"/, "\\1", "g", $3); }' rust-toolchain.toml)" >> $GITHUB_ENV
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_NIGHTLY_TOOLCHAIN }}
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - uses: giraffate/clippy-action@v1
-        with:
-          reporter: "github-pr-review"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          clippy_flags: -- -D warnings
-      - run: cargo +${{ env.RUST_NIGHTLY_TOOLCHAIN }} clippy -- -D warnings
+          persist-credentials: false
+          fetch-depth: 0
+      - id: filter
+        if: github.event_name != 'merge_group'
+        name: retain Rust and C++ gates for source or workflow changes
+        continue-on-error: true
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: git diff --name-only --no-renames "$BASE_SHA" HEAD | jq -R -s -r 'split("\n") | any(.[]; test("^(src/|tests/|cxx/|\\.github/|\\.config/|Cargo\\.|build\\.rs$|CMakeLists\\.txt$|mise\\.|rust-toolchain\\.toml$)")) | "rust=\(.)"' >> "$GITHUB_OUTPUT"
 
-  cargo-docs:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+  rust-test:
+    needs: [image-ref, changes]
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: *linux
+    # Only the repository owner sets the image ref; image-ref relays it unchanged.
+    container: ${{ needs.image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
+    permissions: *image-read-permissions
+    env:
+      CXX: clang++-22
     steps:
-      - run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          echo "deb     http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" | sudo tee --append /etc/apt/sources.list.d/llvm.list
-          echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" | sudo tee --append /etc/apt/sources.list.d/llvm.list
-          sudo apt-get update -o Dir::Etc::sourcelist="sources.list.d/llvm.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: clang-16 clang-format-16 clang-tidy-16 clang-tools-16 clangd-16 libclang-16-dev libclang-common-16-dev libclang1-16
-          version: 1.0
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo doc --no-deps --package cxx-auto
-      - uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/doc
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - *checkout
+      - *setup-cpp
+      - *setup-rust
+      - *setup-mise
+      - name: build every target
+        run: mise run check:build
+      - name: run generated binding and Rust tests
+        run: mise run check:test
 
-  cargo-test:
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+  rust-quality:
+    needs: [image-ref, changes]
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: *linux
+    # Only the repository owner sets the image ref; image-ref relays it unchanged.
+    container: ${{ needs.image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
+    permissions: *image-read-permissions
+    env:
+      CXX: clang++-22
     steps:
-      - if: matrix.os == 'macos-latest'
-        run: brew install llvm@16
-      - if: matrix.os == 'ubuntu-latest'
-        run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          echo "deb     http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" | sudo tee --append /etc/apt/sources.list.d/llvm.list
-          echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" | sudo tee --append /etc/apt/sources.list.d/llvm.list
-          sudo apt-get update -o Dir::Etc::sourcelist="sources.list.d/llvm.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
-      - if: matrix.os == 'ubuntu-latest'
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: clang-16 clang-format-16 clang-tidy-16 clang-tools-16 clangd-16 libclang-16-dev libclang-common-16-dev libclang1-16
-          version: 1.0
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test
+      - *checkout
+      - *setup-cpp
+      - *setup-rust
+      - *setup-mise
+      - name: check strict Clippy wall
+        run: mise run check:clippy
+      - name: check public and private rustdoc
+        run: mise run check:doc
 
-  clang-format:
-    runs-on: ubuntu-latest
+  cpp-clang:
+    needs: [image-ref, changes]
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: *linux
+    # Only the repository owner sets the image ref; image-ref relays it unchanged.
+    container: ${{ needs.image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
+    permissions: *image-read-permissions
+    env:
+      CXX: clang++-22
+      BUILD_DIR: target/cmake-clang22
     steps:
-      - run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          echo "deb     http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" | sudo tee --append /etc/apt/sources.list.d/llvm.list
-          echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" | sudo tee --append /etc/apt/sources.list.d/llvm.list
-          sudo apt-get update -o Dir::Etc::sourcelist="sources.list.d/llvm.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: clang-16 clang-format-16 clang-tidy-16 clang-tools-16 clangd-16 libclang-16-dev libclang-common-16-dev libclang1-16
-          version: 1.0
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo xtask clang format
+      - *checkout
+      - *setup-cpp
+      - *setup-rust
+      - *setup-mise
+      - name: produce CXX headers
+        run: mise run check:build
+      - name: configure Clang 22 C++26 probe target
+        run: cmake -S . -B "$BUILD_DIR" -DCMAKE_CXX_COMPILER=clang++-22
+      - name: compile probes
+        run: cmake --build "$BUILD_DIR"
+      - name: run C++ capability witnesses
+        run: ctest --test-dir "$BUILD_DIR" --output-on-failure
 
-  clang-tidy:
-    runs-on: ubuntu-latest
+  cpp-gcc:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: *linux
+    env:
+      CXX: clang++-22
     steps:
-      - run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          echo "deb     http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" | sudo tee --append /etc/apt/sources.list.d/llvm.list
-          echo "deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" | sudo tee --append /etc/apt/sources.list.d/llvm.list
-          sudo apt-get update -o Dir::Etc::sourcelist="sources.list.d/llvm.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
-      - uses: awalsh128/cache-apt-pkgs-action@latest
+      - *checkout
+      - name: set up C++26 compiler
+        # The checked-out branch supplies this action; no remote ref is involved.
+        uses: ./.github/actions/setup-cpp # zizmor: ignore[self-repository]
+      - name: set up pinned Rust toolchain and cache
+        # The checked-out branch supplies this action; no remote ref is involved.
+        uses: ./.github/actions/setup-rust # zizmor: ignore[self-repository]
+      - name: set up pinned tools
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
-          packages: clang-16 clang-format-16 clang-tidy-16 clang-tools-16 clangd-16 libclang-16-dev libclang-common-16-dev libclang1-16 ninja-build
-          version: 1.0
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo check
-      - run: cargo xtask clang tidy
+          version: "2026.9.14"
+          cache_save: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - name: produce CXX headers
+        run: mise run check:build
+      # This upstream image supplies GCC 16 even before our own CI image has
+      # been published. CXX generates an absolute rust/cxx.h symlink into
+      # Cargo's registry, so mount that source directory at its host path too.
+      - name: compile C++26 probes with GCC 16
+        run: docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$HOME/.cargo/registry/src:$HOME/.cargo/registry/src:ro" -w "$GITHUB_WORKSPACE" gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e855c1 g++ -std=c++2c -fno-exceptions -fno-rtti -Werror -Wall -Wextra -pedantic -I cxx/include -I target/cxxbridge cxx/tests/probes.cxx -o target/cxx-auto-probes-gcc16
+      - name: run GCC 16 capability witnesses
+        run: docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e855c1 ./target/cxx-auto-probes-gcc16
+
+  rust-test-macos:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: macos-latest
+    steps:
+      - *checkout
+      - name: install current upstream LLVM for C++26
+        run: brew install llvm
+      - name: select upstream Clang instead of Apple Clang
+        run: echo "CXX=$(brew --prefix llvm)/bin/clang++" >> "$GITHUB_ENV"
+      - name: set up pinned Rust toolchain and cache
+        # The checked-out branch supplies this action; no remote ref is involved.
+        uses: ./.github/actions/setup-rust # zizmor: ignore[self-repository]
+      - name: set up pinned tools
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: "2026.9.14"
+      - name: run macOS Rust and generated binding tests
+        run: mise run check:test
+
+  format:
+    needs: image-ref
+    runs-on: *linux
+    # Only the repository owner sets the image ref; image-ref relays it unchanged.
+    container: ${{ needs.image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
+    permissions: *image-read-permissions
+    steps:
+      - *checkout
+      - *setup-rust
+      - *setup-mise
+      - name: refuse unresolved conflict markers
+        run: mise run check:conflict-markers
+      - name: verify pinned guidance baseline
+        run: mise run check:baseline-hash
+      - name: verify format and size budgets
+        run: mise run check:format
+
+  workflow-lint:
+    runs-on: *linux
+    steps:
+      - *checkout
+      - name: install pinned zizmor
+        uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2
+        with:
+          tool: zizmor@1.30.1
+      - name: audit workflows
+        run: zizmor .github/workflows

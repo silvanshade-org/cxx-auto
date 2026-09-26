@@ -1,4 +1,11 @@
+#:tombi toml-version = "v1.0.0"
+# One pinned compiler builds and checks the workspace. Its nightly rustfmt
+# supports the shared formatting profile; a stable release check catches
+# nightly-only implementation leaking into the published library.
+
+# This workspace uses nightly rustfmt; Clippy and Rustdoc use the same pinned
+# compiler. No compiler-plugin components are needed for the local lint wall.
 [toolchain]
-channel = "nightly-2023-08-08"
-components = ["miri"]
-profile = "default"
+channel = "nightly-2026-06-25"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

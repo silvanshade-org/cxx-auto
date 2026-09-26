@@ -1,32 +1,56 @@
 use serde::Deserialize;
 
+/// One C++ type description and the namespaces, include files, and Rust
+/// lifetimes needed for its binding.
 #[cfg(feature = "alloc")]
 #[derive(Deserialize)]
-pub struct CxxAutoEntry<'ctx> {
+pub struct CxxAutoEntry<'ctx>
+{
+    /// Header declaring the C++ type.
     cxx_include: &'ctx str,
+    /// Optional C++ proxy header when the ABI probe uses a different include.
     cxx_proxy_include: Option<&'ctx str>,
+    /// Namespace containing the C++ type.
     cxx_namespace: &'ctx str,
+    /// Optional namespace for the C++ proxy.
     cxx_proxy_namespace: Option<&'ctx str>,
+    /// C++ type name when it differs from the Rust name.
     cxx_name: Option<&'ctx str>,
+    /// Rust type name to generate.
     rust_name: &'ctx str,
     #[serde(default)]
+    /// Rust lifetime names and their outlives bounds.
     rust_lifetimes: ::indexmap::IndexMap<&'ctx str, ::alloc::vec::Vec<&'ctx str>>,
 }
 
 #[cfg(feature = "alloc")]
-impl<'ctx> CxxAutoEntry<'ctx> {
+impl CxxAutoEntry<'_>
+{
+    /// Return the C++ type name, falling back to its Rust-facing name.
     #[must_use]
-    pub fn cxx_name(&self) -> &str {
+    #[inline]
+    pub fn cxx_name(&self) -> &str
+    {
         self.cxx_name.unwrap_or(self.rust_name)
     }
 
-    pub(crate) fn emit_items_write_module_for_file<'a, 'b>(
+    /// Generate the artifact-information reader and module writer for this
+    /// type.
+    ///
+    /// # Specification
+    /// - provides: writers whose configuration and ABI queries reflect this
+    ///   type description.
+    /// - panics: syn rejects invalid Rust identifiers in the configuration.
+    pub(crate) fn emit_items_write_module_for_file<'component, 'descendant>(
         &self,
-        path_components: impl Iterator<Item = &'a ::alloc::string::String>,
-        path_descendants: impl Iterator<Item = &'b ::alloc::string::String>,
-    ) -> ::alloc::vec::Vec<syn::ItemFn> {
+        path_components: impl Iterator<Item = &'component ::alloc::string::String>,
+        path_descendants: impl Iterator<Item = &'descendant ::alloc::string::String>,
+    ) -> ::alloc::vec::Vec<syn::ItemFn>
+    {
         let cxx_include = self.cxx_include;
+        let cxx_proxy_include = self.cxx_proxy_include.unwrap_or(self.cxx_include);
         let cxx_namespace = self.cxx_namespace;
+        let cxx_proxy_namespace = self.cxx_proxy_namespace.unwrap_or(self.cxx_namespace);
         let cxx_name = self.cxx_name();
         let rust_name = self.rust_name;
         let lifetimes = {
@@ -42,7 +66,9 @@ impl<'ctx> CxxAutoEntry<'ctx> {
                     let path_components = vec![#(#path_components),*];
                     let path_descendants = vec![#(#path_descendants),*];
                     let cxx_include = #cxx_include;
+                    let cxx_proxy_include = #cxx_proxy_include;
                     let cxx_namespace = #cxx_namespace;
+                    let cxx_proxy_namespace = #cxx_proxy_namespace;
                     let cxx_name = #cxx_name;
                     let rust_name = #rust_name;
                     let lifetimes = ::cxx_auto::indexmap::IndexMap::from_iter([#(#lifetimes),*]);
@@ -82,7 +108,9 @@ impl<'ctx> CxxAutoEntry<'ctx> {
                         path_components,
                         path_descendants,
                         cxx_include,
+                        cxx_proxy_include,
                         cxx_namespace,
+                        cxx_proxy_namespace,
                         cxx_name,
                         rust_name,
                         lifetimes,
@@ -121,7 +149,15 @@ impl<'ctx> CxxAutoEntry<'ctx> {
         ]
     }
 
-    pub(crate) fn emit_item_mod_cxx_bridge(&self) -> [syn::Item; 2] {
+    /// Generate the CXX bridge between a C++ ABI probe and this type's Rust
+    /// module.
+    ///
+    /// # Specification
+    /// - provides: a bridge to ABI properties and capability predicates for the
+    ///   configured type.
+    /// - panics: syn rejects invalid Rust identifiers in the configuration.
+    pub(crate) fn emit_item_mod_cxx_bridge(&self) -> [syn::Item; 2]
+    {
         let namespace: syn::Attribute = {
             let namespace = self.cxx_proxy_namespace.unwrap_or(self.cxx_namespace);
             syn::parse_quote!(#[namespace = #namespace])
