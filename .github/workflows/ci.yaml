@@ -82,9 +82,10 @@ jobs:
         if: github.event_name != 'merge_group'
         name: retain Rust and C++ gates for source or workflow changes
         continue-on-error: true
+        shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: git diff --name-only --no-renames "$BASE_SHA" HEAD | jq -R -s 'split("\n") | any(.[]; test("^(src/|tests/|cxx/|\\.github/|\\.config/|Cargo\\.|build\\.rs$|CMakeLists\\.txt$|mise\\.|rust-toolchain\\.toml$)")) | "rust=\(.)"' >> "$GITHUB_OUTPUT"
+        run: git diff --name-only --no-renames "$BASE_SHA" HEAD | jq -R -s -r 'split("\n") | any(.[]; test("^(src/|tests/|cxx/|\\.github/|\\.config/|Cargo\\.|build\\.rs$|CMakeLists\\.txt$|mise\\.|rust-toolchain\\.toml$)")) | "rust=\(.)"' >> "$GITHUB_OUTPUT"
 
   rust-test:
     needs: [image-ref, changes]
