@@ -171,10 +171,10 @@ jobs:
       - name: produce CXX headers
         run: mise run check:build
       # This upstream image supplies GCC 16 even before our own CI image has
-      # been published. Keep the mount at its host path: cxxbridge links may
-      # contain absolute paths into the build directory.
+      # been published. CXX generates an absolute rust/cxx.h symlink into
+      # Cargo's registry, so mount that source directory at its host path too.
       - name: compile C++26 probes with GCC 16
-        run: docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e855c1 g++ -std=c++2c -fno-exceptions -fno-rtti -Werror -Wall -Wextra -pedantic -I cxx/include -I target/cxxbridge cxx/tests/probes.cxx -o target/cxx-auto-probes-gcc16
+        run: docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$HOME/.cargo/registry/src:$HOME/.cargo/registry/src:ro" -w "$GITHUB_WORKSPACE" gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e855c1 g++ -std=c++2c -fno-exceptions -fno-rtti -Werror -Wall -Wextra -pedantic -I cxx/include -I target/cxxbridge cxx/tests/probes.cxx -o target/cxx-auto-probes-gcc16
       - name: run GCC 16 capability witnesses
         run: docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e855c1 ./target/cxx-auto-probes-gcc16
 

@@ -28,15 +28,9 @@ binstall_quickinstall = true
 package_manager = "aube"
 
 [env]
-# Resolves rustup from PATH, else from its fixed install dir ($CARGO_HOME/bin,
-# default ~/.cargo/bin), so activation never depends on the launching shell's
-# PATH. Fails loudly when rustup is absent from both: a nonexistent-path
-# fallback would let a Homebrew cargo keep resolving while RUSTUP_TOOLCHAIN
-# silently binds nothing. The resolved dir must also carry the executable
-# cargo/rustc proxy pair: a dir that resolves rustup but lacks the proxies
-# (a partial install, a stale PATH entry) would keep cargo/rustc resolving
-# to distribution copies while the pin points at nothing.
-_.path = ["{{ exec(command='r=$(command -v rustup) || r=\"${CARGO_HOME:-$HOME/.cargo}/bin/rustup\"; [ -x \"$r\" ] || { echo \"rustup required: the pinned toolchains resolve through it\" >&2; exit 1; }; d=$(dirname \"$r\"); if [ ! -x \"$d/cargo\" ] || [ ! -x \"$d/rustc\" ]; then echo \"the rustup dir $d lacks the executable cargo/rustc proxies: the pinned toolchains resolve through the proxy pair\" >&2; exit 1; fi; printf \"%s\" \"$d\"') }}"]
+# Resolve rustup from PATH or its fixed install dir; prefer adjacent cargo/rustc proxies.
+# Homebrew rustup lacks proxies, so use rustup's pinned toolchain bin instead of distribution Rust.
+_.path = ["{{ exec(command='r=$(command -v rustup) || r=\"${CARGO_HOME:-$HOME/.cargo}/bin/rustup\"; [ -x \"$r\" ] || { echo \"rustup required: the pinned toolchains resolve through it\" >&2; exit 1; }; d=$(dirname \"$r\"); if [ ! -x \"$d/cargo\" ] || [ ! -x \"$d/rustc\" ]; then c=$(\"$r\" which cargo) || { echo \"rustup could not resolve pinned cargo\" >&2; exit 1; }; d=$(dirname \"$c\"); fi; if [ ! -x \"$d/cargo\" ] || [ ! -x \"$d/rustc\" ]; then echo \"the pinned toolchain lacks executable cargo/rustc\" >&2; exit 1; fi; printf \"%s\" \"$d\"') }}"]
 
 [task_config]
 includes = [".config/mise/tasks"]

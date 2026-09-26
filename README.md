@@ -14,4 +14,6 @@ The [dynamic binding fixture](tests/fixtures/dynamic/) contains both build stage
 
 Install the pinned tools with `mise install`, then run `mise run check` for the workspace build, tests, lint wall, documentation, formatting, and repository gates. The C++ probe target is also exercised with GCC 16 and Clang 22 by configuring `CMakeLists.txt` with each compiler and running `ctest` on each build directory.
 
+On macOS with Homebrew-installed `rustup`, run `rustup toolchain install` before `mise install`. The project then selects `cargo` and `rustc` from the repository-pinned toolchain rather than the Homebrew directory.
+
 API documentation is published at [docs.rs/cxx-auto](https://docs.rs/cxx-auto/latest/cxx_auto/). Source code and issues live at [silvanshade-org/cxx-auto](https://github.com/silvanshade-org/cxx-auto).
