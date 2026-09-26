@@ -18,6 +18,32 @@ On macOS with Homebrew-installed `rustup`, run `rustup toolchain install` before
 
 API documentation is published at [docs.rs/cxx-auto](https://docs.rs/cxx-auto/latest/cxx_auto/). Source code and issues live at [silvanshade-org/cxx-auto](https://github.com/silvanshade-org/cxx-auto).
 
+## CI image
+
+The [image workflow](.github/workflows/ci-image.yaml) builds the pinned toolchain natively for amd64 and arm64 on `main`, publishes a GHCR manifest by digest, and tags it with the SHA-256 of `mise.toml`, `mise.lock`, and `rust-toolchain.toml` concatenated in that order. Its `workflow_dispatch` can rebuild the same pin. The repository variable `CXX_AUTO_CI_IMAGE` remains empty until the image is proven.
+
+On `main`, dispatch the image builder if these pinned inputs have no successful image run:
+
+```sh
+mise exec -- gh workflow run ci-image.yaml --repo silvanshade-org/cxx-auto --ref main
+```
+
+Wait for the builder’s `manifest` job to pass and publish its GHCR tag. From that same `main` revision, run a full hosted gate against the image without changing the repository variable:
+
+```sh
+IMAGE="ghcr.io/silvanshade-org/cxx-auto-ci:$(cat mise.toml mise.lock rust-toolchain.toml | sha256sum | cut -d ' ' -f1)"
+mise exec -- gh workflow run ci.yaml --repo silvanshade-org/cxx-auto --ref main -f ci_image="$IMAGE"
+```
+
+After the preview proves an actual Linux image pull and all applicable Rust, GCC 16, Clang 22, and macOS jobs pass, a repository administrator can activate it and verify the repository-variable path:
+
+```sh
+mise exec -- gh variable set CXX_AUTO_CI_IMAGE --repo silvanshade-org/cxx-auto --body "$IMAGE"
+mise exec -- gh workflow run ci.yaml --repo silvanshade-org/cxx-auto --ref main
+```
+
+Merge-queue and manual CI runs force the full source gate; documentation-only pull requests may skip source lanes but still run formatting and workflow lint. GCC 16 and macOS keep their separate runners. If the image pull or warm run fails, the owner removes `CXX_AUTO_CI_IMAGE` to restore the bare-runner fallback; do not change package visibility or add a personal access token to repair GHCR access. When pin files change, build and preview the new tag before changing the variable.
+
 ## Release notes
 
 `CHANGELOG.md` is generated from the full tagged Git history by the private [changelog crate](crates/changelog/) with `mise run changelog:render`; this tool does not build the product's C++ bridge. On a branch with an open GitHub pull request, the renderer reads its proposed squash subject and live `origin` base revision, then substitutes that subject and review number for temporary branch commits; on `main`, it uses the landed commits. It refuses a missing or stale review base and leaves an already-current changelog untouched. After changing the pull request title or rebasing, rerun the task and commit the updated file; `mise run check:format` checks it.

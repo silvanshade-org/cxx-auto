@@ -17,6 +17,10 @@ All notable changes to cxx-auto are documented here.
 - _(repo)_ Generate release changelog (#9)
 - _(repo)_ Pin C++ formatting and review tooling (#11)
 
+### Unreleased Continuous Integration
+
+- _(ci)_ Preview pinned GHCR image before owner opt-in (#13)
+
 ### Unreleased Maintenance
 
 - _(changelog)_ Extract renderer into workspace tooling crate (#12)

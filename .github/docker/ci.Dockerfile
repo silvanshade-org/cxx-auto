@@ -17,6 +17,7 @@ ENV PATH="/opt/cargo/bin:/opt/mise/shims:/usr/lib/llvm-22/bin:${PATH}"
 ENV MISE_DISABLE_TOOLS="github:colbymchenry/codegraph,github:max-sixty/worktrunk,github:cli/cli,github:j178/prek,github:nektos/act,github:woodruffw/zizmor,npm:@commitlint/cli"
 WORKDIR /workspace
 COPY mise.toml mise.lock rust-toolchain.toml ./
+COPY .mise/locks/npm-oxfmt/ .mise/locks/npm-oxfmt/
 
 ARG TARGETARCH
 RUN set -eu; \
