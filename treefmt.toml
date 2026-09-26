@@ -43,14 +43,14 @@ includes = ["*.rs"]
 priority = 0
 command = "clang-format"
 options = ["-i", "--style=file"]
-includes = ["*.cxx", "*.hxx"]
+includes = ["*.cxx", "*.hxx", "*.cppm"]
 
-# Builds the generated bridge header, then lints both TUs and their included header.
+# Builds the generated bridge header, then lints the module and the TUs that import it.
 [formatter."clang-tidy"]
 priority = 1
 command = "mise"
 options = ["run", "lint:cpp"]
-includes = ["*.cxx", "*.hxx"]
+includes = ["*.cxx", "*.hxx", "*.cppm"]
 no-positional-arg-support = true
 
 # `check` when both cover the same markdown set.

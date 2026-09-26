@@ -10,10 +10,14 @@ description = "Check formatting and generated history against the current commit
 run = "treefmt --no-cache --fail-on-change"
 
 ["lint:cpp"]
-description = "Analyze C++ translation units with the generated Rust bridge header"
+description = "Analyze the cxx_auto module and the C++ translation units that import it"
 run = """
 cargo build --quiet
-clang-tidy --quiet cxx/tests/probes.cxx cxx/lib/cmake.cxx -- -std=c++26 -resource-dir="$(clang -print-resource-dir)" -Icxx/include -Itarget/cxxbridge
+flags="-std=c++26 -resource-dir=$(clang -print-resource-dir) -fno-exceptions -fno-rtti -Icxx/include -Itarget/cxxbridge"
+mkdir -p target/cxx-auto-tidy
+clang --gcc-toolchain=/usr $flags --precompile -x c++-module cxx/module/cxx_auto.cppm -o target/cxx-auto-tidy/cxx_auto.pcm
+clang-tidy --quiet cxx/module/cxx_auto.cppm -- $flags -x c++-module
+clang-tidy --quiet cxx/tests/probes.cxx cxx/lib/cmake.cxx -- $flags -fmodule-file=cxx_auto=target/cxx-auto-tidy/cxx_auto.pcm
 """
 
 ["changelog:render"]

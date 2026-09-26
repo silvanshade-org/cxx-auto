@@ -150,8 +150,9 @@ jobs:
       - *setup-mise
       - name: produce CXX headers
         run: mise run check:build
+      # C++ modules need the Ninja generator and Clang's dependency scanner.
       - name: configure Clang 22 C++26 probe target
-        run: cmake -S . -B "$BUILD_DIR" -DCMAKE_CXX_COMPILER=clang++-22
+        run: cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_CXX_COMPILER=clang++-22 -DCMAKE_CXX_COMPILER_CLANG_SCAN_DEPS=clang-scan-deps-22
       - name: compile probes
         run: cmake --build "$BUILD_DIR"
       - name: run C++ capability witnesses
@@ -181,8 +182,10 @@ jobs:
       # This upstream image supplies GCC 16 even before our own CI image has
       # been published. CXX generates an absolute rust/cxx.h symlink into
       # Cargo's registry, so mount that source directory at its host path too.
+      # Without a build system, the cxx_auto module is compiled first by hand;
+      # GCC writes and then reads its interface under gcm.cache/.
       - name: compile C++26 probes with GCC 16
-        run: docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$HOME/.cargo/registry/src:$HOME/.cargo/registry/src:ro" -w "$GITHUB_WORKSPACE" gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e855c1 g++ -std=c++2c -fno-exceptions -fno-rtti -Werror -Wall -Wextra -pedantic -I cxx/include -I target/cxxbridge cxx/tests/probes.cxx -o target/cxx-auto-probes-gcc16
+        run: docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$HOME/.cargo/registry/src:$HOME/.cargo/registry/src:ro" -w "$GITHUB_WORKSPACE" gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e855c1 sh -c 'flags="-std=c++2c -fmodules -fno-exceptions -fno-rtti -Werror -Wall -Wextra -pedantic -I cxx/include -I target/cxxbridge"; g++ $flags -x c++ -c cxx/module/cxx_auto.cppm -o target/cxx_auto-gcc16.o && g++ $flags cxx/tests/probes.cxx target/cxx_auto-gcc16.o -o target/cxx-auto-probes-gcc16'
       - name: run GCC 16 capability witnesses
         run: docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e855c1 ./target/cxx-auto-probes-gcc16
 
@@ -235,7 +238,7 @@ jobs:
     steps:
       - *checkout
       - name: install pinned zizmor
-        uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2
+        uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2.87.20
         with:
           tool: zizmor@1.30.1
       - name: audit workflows

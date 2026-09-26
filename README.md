@@ -1,6 +1,6 @@
 # cxx-auto
 
-Generate Rust [CXX](https://cxx.rs/) bindings from C++ layout and trait capabilities that the C++ compiler records at compile time. The C++ header is built as C++26 with exceptions disabled; C++ functions used across the bridge must be `noexcept`. The `cxx` crate's `c++20` feature enables its newest available bridge mode, while the compiler uses `-std=c++2c`.
+Generate Rust [CXX](https://cxx.rs/) bindings from C++ layout and trait capabilities that the C++ compiler records at compile time. The C++ library is the named module `cxx_auto`, built as C++26 with exceptions disabled; its macros live in `cxx-auto.hxx`, which imports it. C++ functions used across the bridge must be `noexcept`. The `cxx` crate's `c++20` feature enables its newest available bridge mode, while the compiler uses `-std=c++2c`. Clang and GCC are supported.
 
 ## Generate a binding
 
@@ -14,7 +14,7 @@ A crate generates its bindings in its own build script, in one pass. Nothing is 
    - `cxx_name`, `cxx_namespace`, and `cxx_proxy_include`.
 
    A malformed spec stops the C++ compile.
-3. In the build script, compile that source to objects (`cc::Build::try_compile_intermediates`). Then call `cxx_auto::generate(&objects, &out_dir)`, which writes `out_dir/auto.rs` and one module per type beneath `out_dir/auto`, and returns the type modules. Pass those to `cxx_build::bridges` along with any bridges of your own. The [fixture build script](tests/fixtures/dynamic/build.rs) shows the whole sequence.
+3. In the build script, configure one `cc::Build` with the compiler, standard and flags that every C++ unit shares, then compile the `cxx_auto` module first: `cxx_auto::compile_modules(&base, [cxx_auto::ModuleUnit::cxx_auto()], &out_dir)`. Units are compiled in the order given, so list any modules of your own after the ones they import. Apply `Modules::configure` to every later build, compile the export source to objects (`cc::Build::try_compile_intermediates`), then call `cxx_auto::generate(&objects, &out_dir)`. It writes `out_dir/auto.rs` and one module per type beneath `out_dir/auto`, and returns the type modules. Pass those to `cxx_build::bridges` along with any bridges of your own, configure that build with the modules too, and link `Modules::objects` into it. The [fixture build script](tests/fixtures/dynamic/build.rs) shows the whole sequence.
 4. In the crate, `include!(concat!(env!("OUT_DIR"), "/auto.rs"))` inside a module named `auto`, and use the generated types in any other CXX bridge declarations.
 
 ### What the record claims
