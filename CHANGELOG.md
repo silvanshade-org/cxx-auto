@@ -6,26 +6,11 @@ All notable changes to cxx-auto are documented here.
 
 ### Unreleased Features
 
-- _(api)_ Modernize C++26 binding generation
-
-### Unreleased Bug Fixes
-
-- _(ci)_ Preserve source gate path filter
-- _(ci)_ Keep GCC and macOS tools pinned
-- _(build)_ Select pinned Rust through mise backend
-
-### Unreleased Documentation
-
-- _(repo)_ Bind existing xtask as tooling
-- _(docs)_ Bind guidance to available PR5 tools
+- _(cpp)_ Modernize C++26 bindings and guidance (#5)
 
 ### Unreleased Build
 
 - _(repo)_ Generate release changelog (#9)
-
-### Unreleased Configuration
-
-- _(repo)_ Adopt shared source guidance
 
 ### Unreleased Legacy
 
