@@ -41,6 +41,7 @@ includes = [".config/mise/tasks"]
 # change.
 [tools]
 "github:aubepkg/aube" = "2.2.4"
+"github:cli/cli" = "2.100.0"
 # Retain across languages: project setup initializes the source index.
 # CLI use requires this pin even when no MCP server is mounted.
 "github:colbymchenry/codegraph" = "1.6.0"

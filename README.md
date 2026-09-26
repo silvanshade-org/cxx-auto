@@ -17,3 +17,7 @@ Install the pinned tools with `mise install`, then run `mise run check` for the 
 On macOS with Homebrew-installed `rustup`, run `rustup toolchain install` before `mise install`. The project then selects `cargo` and `rustc` from the repository-pinned toolchain rather than the Homebrew directory.
 
 API documentation is published at [docs.rs/cxx-auto](https://docs.rs/cxx-auto/latest/cxx_auto/). Source code and issues live at [silvanshade-org/cxx-auto](https://github.com/silvanshade-org/cxx-auto).
+
+## Release notes
+
+`CHANGELOG.md` is generated from the full tagged Git history with `mise run changelog:render`. On a branch with an open GitHub pull request, the renderer substitutes the proposed squash subject and review number for temporary branch commits; on `main`, it uses the landed commits. It refuses a stale review base and leaves an already-current changelog untouched. After changing the pull request title or rebasing, rerun the task and commit the updated file; `mise run check:format` checks it.

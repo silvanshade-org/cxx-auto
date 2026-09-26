@@ -17,7 +17,7 @@ env:
   CARGO_TERM_COLOR: always
   # Local hook, index, and act tools do not belong in the hosted tool subset.
   # This list is identical to the Dockerfile's image build environment.
-  MISE_DISABLE_TOOLS: github:colbymchenry/codegraph,github:max-sixty/worktrunk,github:j178/prek,github:nektos/act,github:woodruffw/zizmor,npm:@commitlint/cli
+  MISE_DISABLE_TOOLS: github:colbymchenry/codegraph,github:max-sixty/worktrunk,github:cli/cli,github:j178/prek,github:nektos/act,github:woodruffw/zizmor,npm:@commitlint/cli
 
 permissions:
   contents: read
@@ -73,7 +73,8 @@ jobs:
     outputs:
       rust: ${{ github.event_name == 'merge_group' || steps.filter.outcome != 'success' || steps.filter.outputs.rust == 'true' }}
     steps:
-      - name: checkout history for path filter
+      - &checkout-history
+        name: checkout full history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -204,8 +205,11 @@ jobs:
     # Only the repository owner sets the image ref; image-ref relays it unchanged.
     container: ${{ needs.image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
     permissions: *image-read-permissions
+    env:
+      CXX: clang++-22
     steps:
-      - *checkout
+      - *checkout-history
+      - *setup-cpp
       - *setup-rust
       - *setup-mise
       - name: refuse unresolved conflict markers
