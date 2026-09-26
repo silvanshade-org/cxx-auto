@@ -8,6 +8,10 @@ All notable changes to cxx-auto are documented here.
 
 - _(cpp)_ Modernize C++26 bindings and guidance (#5)
 
+### Unreleased Documentation
+
+- _(config)_ Bind shared guidance to cxx-auto (#10)
+
 ### Unreleased Build
 
 - _(repo)_ Generate release changelog (#9)
