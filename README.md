@@ -22,7 +22,7 @@ A crate generates its bindings in its own build script, in one pass. Nothing is 
 Layout, construction, destruction, copying and moving follow the C++ type traits. The rest follow what the C++ type itself provides or claims:
 
 | Rust trait | Implemented when |
-|---|---|
+| ---------- | ---------------- |
 | `PartialEq` | `operator==` exists; `ne` calls C++ `operator!=` when the type declares one |
 | `PartialOrd` | `operator<=>` exists; `partial_cmp` makes one C++ three-way comparison |
 | `Eq`, `Ord` | `operator<=>` yields `std::strong_ordering`, or the type specializes `cxx_auto::rust_eq` / `cxx_auto::rust_ord` |
