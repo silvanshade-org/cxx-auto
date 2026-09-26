@@ -566,12 +566,21 @@ url = "https://nodejs.org/dist/v26.8.1/node-v26.8.1-win-x64.zip"
 
 [[tools."npm:@commitlint/cli"]]
 version = "21.2.2"
-aube = { path = ".mise/locks/npm-commitlint-cli/21.2.2", digest = "sha256:b309b760410eb6100b9b847f4febbd22593ec553e566f1ab060a06af9cad7bea" }
+aube = { path = ".mise/locks/npm-commitlint-cli/21.2.2", digest = "sha256:006c6747c54d1ab618aa8f7e259f19fdf651a25d6bbc56bb5e3fbad624439f61" }
 backend = "npm:@commitlint/cli"
 specifiers = ["21.2.2"]
 
 [[tools."npm:oxfmt"]]
 version = "0.65.0"
-aube = { path = ".mise/locks/npm-oxfmt/0.65.0", digest = "sha256:d5e6c3c1d4a69d15bdb76c5575508d39847799c88b3c0e93aa492da2c324accd" }
+aube = { path = ".mise/locks/npm-oxfmt/0.65.0", digest = "sha256:875f746f68ebd84620ff1bd3fcec8bf522ee681ee88330bfa656ae0f578fc5e4" }
 backend = "npm:oxfmt"
 specifiers = ["0.65.0"]
+
+[[tools.rust]]
+version = "nightly-2026-06-25"
+backend = "core:rust"
+specifiers = ["nightly-2026-06-25"]
+
+[tools.rust.options]
+components = "clippy,rustfmt"
+profile = "minimal"

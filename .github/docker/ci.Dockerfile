@@ -21,11 +21,11 @@ COPY mise.toml mise.lock rust-toolchain.toml ./
 ARG TARGETARCH
 RUN set -eu; \
     case "$TARGETARCH" in \
-      amd64) arch=x64; rust_target=x86_64-unknown-linux-gnu; mise_sha=a6dea05e896f1e6090f821588f45397262270e0e0b456252f8d1da28a416f3f2; rust_sha=dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71 ;; \
-      arm64) arch=arm64; rust_target=aarch64-unknown-linux-gnu; mise_sha=124ea8f7c8cb9a6a3c99c763cbf37ca48c9beaa816735f011d9fd99e6cd463e9; rust_sha=15f6e4ce9f583b929c996c91562bad6d4454f3281de858b02cdfdef615fac433 ;; \
+      amd64) arch=x64; rust_target=x86_64-unknown-linux-gnu; mise_sha=2b289d1b3074e0b1d3f95bad0bd78bbc517c1a5bcb020cbc1643d260f5d1a351; rust_sha=dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71 ;; \
+      arm64) arch=arm64; rust_target=aarch64-unknown-linux-gnu; mise_sha=b405a2ea062c4d9560eee0a3c45b79e53c8834cf38e956bb47ca70e0d2e7479a; rust_sha=15f6e4ce9f583b929c996c91562bad6d4454f3281de858b02cdfdef615fac433 ;; \
       *) echo "unsupported target architecture: $TARGETARCH" >&2; exit 1 ;; \
     esac; \
-    curl -fsSL "https://github.com/jdx/mise/releases/download/v2026.8.15/mise-v2026.8.15-linux-${arch}" -o /usr/local/bin/mise; \
+    curl -fsSL "https://github.com/jdx/mise/releases/download/v2026.9.14/mise-v2026.9.14-linux-${arch}" -o /usr/local/bin/mise; \
     printf '%s  %s\n' "$mise_sha" /usr/local/bin/mise | sha256sum -c -; \
     chmod +x /usr/local/bin/mise; \
     curl -fsSL "https://static.rust-lang.org/rustup/archive/1.29.1/${rust_target}/rustup-init" -o /tmp/rustup-init; \

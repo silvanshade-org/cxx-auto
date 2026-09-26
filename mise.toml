@@ -4,7 +4,7 @@
 # would reject them.
 #:tombi schema.strict = false
 
-min_version = "2026.8.15"
+min_version = "2026.9.14"
 
 [settings]
 activate_aggressive = true
@@ -12,6 +12,8 @@ experimental = true
 env_shell_expand = true
 minimum_release_age = "1d"
 lockfile = true
+# Rust stays pinned once in rust-toolchain.toml; mise selects its backend.
+idiomatic_version_file_enable_tools = ["rust"]
 
 [settings.cargo]
 binstall = true
@@ -26,11 +28,6 @@ binstall_quickinstall = true
 
 [settings.npm]
 package_manager = "aube"
-
-[env]
-# Resolve rustup from PATH or its fixed install dir; prefer adjacent cargo/rustc proxies.
-# Homebrew rustup lacks proxies, so use rustup's pinned toolchain bin instead of distribution Rust.
-_.path = ["{{ exec(command='r=$(command -v rustup) || r=\"${CARGO_HOME:-$HOME/.cargo}/bin/rustup\"; [ -x \"$r\" ] || { echo \"rustup required: the pinned toolchains resolve through it\" >&2; exit 1; }; d=$(dirname \"$r\"); if [ ! -x \"$d/cargo\" ] || [ ! -x \"$d/rustc\" ]; then c=$(\"$r\" which cargo) || { echo \"rustup could not resolve pinned cargo\" >&2; exit 1; }; d=$(dirname \"$c\"); fi; if [ ! -x \"$d/cargo\" ] || [ ! -x \"$d/rustc\" ]; then echo \"the pinned toolchain lacks executable cargo/rustc\" >&2; exit 1; fi; printf \"%s\" \"$d\"') }}"]
 
 [task_config]
 includes = [".config/mise/tasks"]
