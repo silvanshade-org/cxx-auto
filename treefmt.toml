@@ -8,6 +8,7 @@
 # shared baseline. Source and test files remain inside the formatter walk.
 excludes = [
   "target/**",
+  ".git-cliff-output",
   ".codegraph/**",
   # A formatter must not rewrite resolver-owned lockfiles: the resolver and
   # formatter would otherwise fight on every run. Other lockfiles are scoped
@@ -22,6 +23,15 @@ excludes = [
   # hash: a formatter that rewrites one byte here breaks the pin.
   "docs/agents/baseline.md",
 ]
+
+# Generate before formatting Markdown. The command only replaces the root file
+# when rendered bytes change, so treefmt's change detector stays meaningful.
+[formatter."changelog-generate"]
+priority = -3
+command = "mise"
+options = ["run", "changelog:render"]
+includes = ["CHANGELOG.md"]
+no-positional-arg-support = true
 
 [formatter.rustfmt]
 command = "rustfmt"
