@@ -4,6 +4,7 @@
 mod tests
 {
     use std::fs;
+    use std::os::unix::fs::PermissionsExt as _;
     use std::path::Path;
     use std::process::Command;
     use std::time::SystemTime;
@@ -194,6 +195,46 @@ mod tests
             String::from_utf8_lossy(&stale.stderr)
         );
         assert_eq!(fs::read_to_string(repo.join("CHANGELOG.md"))?, landed);
+
+        git(&repo, &["remote", "add", "origin", &repo.to_string_lossy()])?;
+        git(&repo, &["switch", "-qc", "later-review"])?;
+        fs::write(repo.join("README.md"), "later transient")?;
+        git(&repo, &["add", "README.md"])?;
+        git(&repo, &[
+            "commit",
+            "-qm",
+            "feat(api): Should not survive later squash",
+        ])?;
+        let fake_bin = repo.join("fake-bin");
+        fs::create_dir_all(&fake_bin)?;
+        let gh = fake_bin.join("gh");
+        fs::write(
+            &gh,
+            format!(
+                "#!/bin/sh\nprintf '%s\\n' '{{\"number\":20,\"title\":\"feat(api): Later review\",\"baseRefOid\":\"{}\",\"baseRefName\":\"main\"}}'\n",
+                base.trim()
+            ),
+        )?;
+        fs::set_permissions(&gh, fs::Permissions::from_mode(0o755))?;
+        let local = Command::new(env!("CARGO_BIN_EXE_changelog"))
+            .current_dir(&repo)
+            .env_remove("GITHUB_EVENT_NAME")
+            .env_remove("GITHUB_EVENT_PATH")
+            .env_remove("GH_REPO")
+            .env(
+                "PATH",
+                format!("{}:{}", fake_bin.display(), std::env::var("PATH")?),
+            )
+            .output()?;
+        assert!(
+            local.status.success(),
+            "{}",
+            String::from_utf8_lossy(&local.stderr)
+        );
+        let current = fs::read_to_string(&changelog)?;
+        assert!(current.contains("- _(api)_ Reviewed capability (#19)\n"));
+        assert!(current.contains("- _(api)_ Later review (#20)\n"));
+        assert!(!current.contains("Should not survive later squash"));
         fs::remove_dir_all(repo)?;
         Ok(())
     }

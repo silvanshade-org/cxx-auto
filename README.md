@@ -20,4 +20,4 @@ API documentation is published at [docs.rs/cxx-auto](https://docs.rs/cxx-auto/la
 
 ## Release notes
 
-`CHANGELOG.md` is generated from the full tagged Git history with `mise run changelog:render`. On a branch with an open GitHub pull request, the renderer substitutes the proposed squash subject and review number for temporary branch commits; on `main`, it uses the landed commits. It refuses a stale review base and leaves an already-current changelog untouched. After changing the pull request title or rebasing, rerun the task and commit the updated file; `mise run check:format` checks it.
+`CHANGELOG.md` is generated from the full tagged Git history with `mise run changelog:render`. On a branch with an open GitHub pull request, the renderer reads its proposed squash subject and live `origin` base revision, then substitutes that subject and review number for temporary branch commits; on `main`, it uses the landed commits. It refuses a missing or stale review base and leaves an already-current changelog untouched. After changing the pull request title or rebasing, rerun the task and commit the updated file; `mise run check:format` checks it.

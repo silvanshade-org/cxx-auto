@@ -8,7 +8,7 @@ use std::process::Command;
 use serde::Deserialize;
 
 /// Process and filesystem failures leave the checked-in changelog unchanged.
-type Failure = Box<dyn core::error::Error + Send + Sync>;
+type Failure = std::io::Error;
 
 /// The only two histories admitted by the project release-note formatter.
 enum RenderMode
@@ -67,9 +67,9 @@ struct LocalPullRequest
     number: u64,
     /// Review title used in the eventual squash subject.
     title: String,
-    /// The currently published head of the review's base branch.
-    #[serde(rename = "baseRefOid")]
-    base_sha: String,
+    /// Review base branch name, resolved against the live `origin` ref.
+    #[serde(rename = "baseRefName")]
+    base_ref_name: String,
 }
 
 /// Execute a command whose output is needed to select the changelog history.
@@ -92,13 +92,12 @@ fn output(command: &mut Command) -> Result<Vec<u8>, Failure>
 {
     let result = command.output()?;
     if !result.status.success() {
-        return Err(format!(
+        return Err(Failure::other(format!(
             "{} failed ({}): {}",
             command.get_program().to_string_lossy(),
             result.status,
             String::from_utf8_lossy(&result.stderr)
-        )
-        .into());
+        )));
     }
     Ok(result.stdout)
 }
@@ -122,11 +121,10 @@ fn run(command: &mut Command) -> Result<(), Failure>
 {
     let status = command.status()?;
     if !status.success() {
-        return Err(format!(
+        return Err(Failure::other(format!(
             "{} failed ({status})",
             command.get_program().to_string_lossy()
-        )
-        .into());
+        )));
     }
     Ok(())
 }
@@ -134,29 +132,31 @@ fn run(command: &mut Command) -> Result<(), Failure>
 /// Select the review recorded in a CI event or by the checked-out local branch.
 ///
 /// # Specification
-/// - requires: a local review branch has an open PR, or this is `main`/a
-///   merge-group event.
-/// - provides: an exact review base and squash subject, or plain landed
+/// - requires: a local review branch has an open PR and reachable `origin`, or
+///   this is a `main`/merge-group event.
+/// - provides: the live review base and squash subject, or plain landed
 ///   history.
-/// - fails: reports an absent PR, missing event, invalid JSON, or Git/GitHub
-///   CLI failure.
+/// - fails: reports an absent PR/base branch, missing event, invalid JSON, or
+///   Git/GitHub CLI failure.
 /// - panics: none.
 ///
 /// # Errors
 /// - Returns missing-event, invalid-JSON, invalid-UTF-8, filesystem, Git, or
-///   GitHub CLI errors from the selected mode.
+///   GitHub CLI errors, including an absent live `origin` branch.
 ///
 /// # Adequacy
-/// - hypothesis: On a tagged fixture with a review event and a landed push, L2
-///   compares both final histories; L3 observes absent local review metadata.
-///   Malformed event JSON is outside this fixture.
+/// - hypothesis: On tagged Git fixtures, L2 compares review and landed
+///   histories; L3 checks missing local metadata and that a stale GitHub base
+///   snapshot cannot hide a newer parent commit when the live `origin` ref
+///   advanced. Malformed event JSON remains outside this fixture.
 /// - witness: `changelog::tests::open_review_matches_landed_squash_without_transient_commits`
 fn render_mode() -> Result<RenderMode, Failure>
 {
     match env::var("GITHUB_EVENT_NAME") {
         | Ok(event) if event == "pull_request" => {
-            let path = env::var_os("GITHUB_EVENT_PATH").ok_or("missing pull-request event path")?;
-            let event: Event = serde_json::from_slice(&fs::read(path)?)?;
+            let path = env::var_os("GITHUB_EVENT_PATH")
+                .ok_or_else(|| Failure::other("missing pull-request event path"))?;
+            let event: Event = serde_json::from_slice(&fs::read(path)?).map_err(Failure::other)?;
             let pr = event.pull_request;
             Ok(RenderMode::Review(PullRequest {
                 number: pr.number,
@@ -168,16 +168,34 @@ fn render_mode() -> Result<RenderMode, Failure>
         | _ => {
             let mut branch = Command::new("git");
             branch.args(["branch", "--show-current"]);
-            if core::str::from_utf8(&output(&mut branch)?)?.trim() == "main" {
+            if core::str::from_utf8(&output(&mut branch)?)
+                .map_err(Failure::other)?
+                .trim()
+                == "main"
+            {
                 return Ok(RenderMode::Main);
             }
             let mut view = Command::new("gh");
-            view.args(["pr", "view", "--json", "number,title,baseRefOid"]);
-            let pr: LocalPullRequest = serde_json::from_slice(&output(&mut view)?)?;
+            view.args(["pr", "view", "--json", "number,title,baseRefName"]);
+            let pr: LocalPullRequest =
+                serde_json::from_slice(&output(&mut view)?).map_err(Failure::other)?;
+            let mut base = Command::new("git");
+            base.args([
+                "ls-remote",
+                "origin",
+                &format!("refs/heads/{}", pr.base_ref_name),
+            ]);
+            let base_sha = core::str::from_utf8(&output(&mut base)?)
+                .map_err(Failure::other)?
+                .split_once('\t')
+                .map(|(sha, _)| sha.to_owned())
+                .ok_or_else(|| {
+                    Failure::other(format!("missing live origin branch {}", pr.base_ref_name))
+                })?;
             Ok(RenderMode::Review(PullRequest {
                 number: pr.number,
                 title: pr.title,
-                base_sha: pr.base_sha,
+                base_sha,
             }))
         },
     }
@@ -222,17 +240,19 @@ fn render(mode: &RenderMode) -> Result<(), Failure>
         ancestor.args(["merge-base", "--is-ancestor", &pr.base_sha, "HEAD"]);
         let status = ancestor.status()?;
         if !status.success() {
-            return Err(format!(
+            return Err(Failure::other(format!(
                 "pull request base {} is not an ancestor of HEAD ({status})",
                 pr.base_sha
-            )
-            .into());
+            )));
         }
 
         let mut rev_list = Command::new("git");
         rev_list.args(["rev-list", &format!("{}..HEAD", pr.base_sha)]);
         let skipped = output(&mut rev_list)?;
-        for revision in core::str::from_utf8(&skipped)?.lines() {
+        for revision in core::str::from_utf8(&skipped)
+            .map_err(Failure::other)?
+            .lines()
+        {
             cliff.args(["--skip-commit", revision]);
         }
         cliff.args(["--with-commit", &format!("{} (#{})", pr.title, pr.number)]);
@@ -273,7 +293,7 @@ fn install() -> Result<(), Failure>
         },
         | Ok(_) => {},
         | Err(error) if error.kind() == std::io::ErrorKind::NotFound => {},
-        | Err(error) => return Err(error.into()),
+        | Err(error) => return Err(error),
     }
     fs::rename(".git-cliff-output", "CHANGELOG.md")?;
     Ok(())

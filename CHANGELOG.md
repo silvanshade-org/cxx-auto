@@ -11,6 +11,7 @@ All notable changes to cxx-auto are documented here.
 ### Unreleased Bug Fixes
 
 - _(ci)_ Preserve source gate path filter
+- _(ci)_ Keep GCC and macOS tools pinned
 
 ### Unreleased Documentation
 
