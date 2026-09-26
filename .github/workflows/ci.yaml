@@ -8,8 +8,8 @@ name: ci
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  # Stacked reviews target their parent branch, not main.
+  pull_request: {}
   merge_group:
 
 env:
