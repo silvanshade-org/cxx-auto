@@ -1,0 +1,9 @@
+#:tombi toml-version = "v1.1.0"
+# The first worktree creation asks the user to approve these project hooks.
+
+[pre-start]
+tools = 'MISE_IGNORED_CONFIG_PATHS="${XDG_CONFIG_HOME:-$HOME/.config}/mise/config.toml" mise install --locked'
+hooks = "mise exec -- prek install"
+
+[post-start]
+index = "mise exec -- codegraph init"

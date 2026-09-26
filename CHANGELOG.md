@@ -15,6 +15,7 @@ All notable changes to cxx-auto are documented here.
 ### Unreleased Build
 
 - _(repo)_ Generate release changelog (#9)
+- _(repo)_ Pin C++ formatting and review tooling (#11)
 
 ### Unreleased Legacy
 
