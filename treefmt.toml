@@ -38,7 +38,21 @@ command = "rustfmt"
 options = ["--edition", "2024"]
 includes = ["*.rs"]
 
-# The mutating formatter takes the lower priority so `fmt` completes before
+# Format every C++ translation unit and header before analyzing the real TUs.
+[formatter."clang-format"]
+priority = 0
+command = "clang-format"
+options = ["-i", "--style=file"]
+includes = ["*.cxx", "*.hxx"]
+
+# Builds the generated bridge header, then lints both TUs and their included header.
+[formatter."clang-tidy"]
+priority = 1
+command = "mise"
+options = ["run", "lint:cpp"]
+includes = ["*.cxx", "*.hxx"]
+no-positional-arg-support = true
+
 # `check` when both cover the same markdown set.
 [formatter."rumdl-format"]
 priority = 0

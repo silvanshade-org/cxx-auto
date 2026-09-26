@@ -8,11 +8,15 @@ namespace demo {
 /// # Specification
 /// - provides: signed integer equality and ordering with no throwing operations.
 /// - panics: none.
-struct Number {
+struct Number
+{
   int value = 0;
 
   constexpr Number() noexcept = default;
-  constexpr explicit Number(int number) noexcept : value(number) {}
+  constexpr explicit Number(int number) noexcept
+    : value(number)
+  {
+  }
 
   friend constexpr auto operator==(Number const&, Number const&) noexcept -> bool = default;
   friend constexpr auto operator<=>(Number const&, Number const&) noexcept = default;
@@ -23,5 +27,10 @@ struct Number {
 /// # Specification
 /// - provides: a Number whose value equals the argument.
 /// - panics: none.
-[[nodiscard]] inline auto make_number(int value) noexcept -> Number { return Number{value}; }
+[[nodiscard]]
+inline auto
+make_number(int value) noexcept -> Number
+{
+  return Number{ value };
+}
 } // namespace demo

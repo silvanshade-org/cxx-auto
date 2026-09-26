@@ -1,0 +1,20 @@
+language: "en-US"
+tone_instructions: "Terse comments: state the issue, then the fix. No praise or filler."
+reviews:
+  profile: "quiet"
+  request_changes_workflow: false
+  high_level_summary: true
+  review_details: false
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 2
+  path_filters:
+    - "!target/**"
+  path_instructions:
+    - path: "src/**/*.rs"
+      instructions: "Rust 2024 C++ bridge: review generator symbol identity, fallible FFI boundaries, and lifetime safety. Flag correctness or API regressions, not style already enforced by local gates."
+    - path: "cxx/**/*"
+      instructions: "C++26 capability probes and bridge header: review concept constraints, ABI/layout consistency, and Clang 22/GCC 16 compatibility. Flag behavior changes or safety hazards, not formatter-only edits."

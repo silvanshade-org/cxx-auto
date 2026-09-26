@@ -40,6 +40,10 @@ includes = [".config/mise/tasks"]
 # resolution misses, and that hazard recurs with every upstream default
 # change.
 [tools]
+# LLVM 22: clang supplies builtin headers required by the separately packaged analyzer.
+"conda:clang" = "22.1.8"
+"conda:clang-format" = "22.1.8"
+"conda:clang-tools" = "22.1.8"
 "github:aubepkg/aube" = "2.2.4"
 "github:cli/cli" = "2.100.0"
 # Retain across languages: project setup initializes the source index.

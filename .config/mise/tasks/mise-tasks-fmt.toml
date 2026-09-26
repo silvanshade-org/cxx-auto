@@ -9,6 +9,13 @@ run = "treefmt --no-cache"
 description = "Check formatting and generated history against the current commits"
 run = "treefmt --no-cache --fail-on-change"
 
+["lint:cpp"]
+description = "Analyze C++ translation units with the generated Rust bridge header"
+run = """
+cargo build --quiet
+clang-tidy --quiet cxx/tests/probes.cxx cxx/lib/cmake.cxx -- -std=c++26 -resource-dir="$(clang -print-resource-dir)" -Icxx/include -Itarget/cxxbridge
+"""
+
 ["changelog:render"]
 description = "Render release history using the current PR title and Git tags"
 run = "cargo run --quiet --bin changelog"
