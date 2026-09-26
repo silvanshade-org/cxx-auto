@@ -1,0 +1,20 @@
+[package]
+name = "cxx-auto-changelog"
+version = "0.0.0"
+edition = "2024"
+description = "Squash-aware changelog generation for cxx-auto"
+readme = "README.md"
+repository = "https://github.com/silvanshade-org/cxx-auto"
+license = "Apache-2.0 WITH LLVM-exception"
+publish = false
+
+[[bin]]
+name = "cxx-auto-changelog"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true
