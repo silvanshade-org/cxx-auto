@@ -1,0 +1,8 @@
+{
+  "cxx_include": "number.hxx",
+  "cxx_proxy_include": "probe.hxx",
+  "cxx_namespace": "demo",
+  "cxx_proxy_namespace": "demo::probe",
+  "cxx_name": "Number",
+  "rust_name": "Number"
+}

@@ -1,0 +1,138 @@
+/// End-to-end shared-library exercise for the generated CXX binding.
+#[cfg(test)]
+mod tests
+{
+    use std::fs;
+    use std::path::PathBuf;
+    use std::process::Command;
+    use std::time::SystemTime;
+
+    #[test]
+    fn loads_generated_comparison_binding() -> Result<(), Box<dyn core::error::Error>>
+    {
+        let nonce = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)?
+            .as_nanos();
+        let root =
+            std::env::temp_dir().join(format!("cxx-auto-binding-{}-{nonce}", std::process::id()));
+        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/dynamic");
+        let probe = root.join("probe");
+        let binding = root.join("binding");
+        let target_dir = root.join("target");
+        for directory in [
+            probe.join("cfg/auto"),
+            probe.join("include"),
+            probe.join("src"),
+            binding.join("include"),
+            binding.join("src"),
+        ] {
+            fs::create_dir_all(directory)?;
+        }
+        for (source, destination) in [
+            ("number.json", probe.join("cfg/auto/number.json")),
+            ("number.hxx", probe.join("include/number.hxx")),
+            ("probe.hxx", probe.join("include/probe.hxx")),
+            ("build.rs", probe.join("build.rs")),
+            ("probe-main.rs", probe.join("src/main.rs")),
+            ("number.hxx", binding.join("include/number.hxx")),
+            ("probe.hxx", binding.join("include/probe.hxx")),
+            ("lib.rs", binding.join("src/lib.rs")),
+            ("binding-build.rs", binding.join("build.rs")),
+        ] {
+            fs::copy(fixture.join(source), destination)?;
+        }
+
+        let project = env!("CARGO_MANIFEST_DIR");
+        let probe_manifest = format!(
+            r#"[package]
+name = "dynamic-binding-probe"
+version = "0.0.0"
+edition = "2024"
+build = "build.rs"
+
+[dependencies]
+cxx = {{ version = "1.0", features = ["c++20"] }}
+cxx-auto = {{ path = "{project}" }}
+
+[build-dependencies]
+cxx-auto = {{ path = "{project}" }}
+cxx-build = "1.0"
+"#
+        );
+        fs::write(probe.join("Cargo.toml"), probe_manifest)?;
+        let output = Command::new("cargo")
+            .args(["run", "--quiet", "--manifest-path"])
+            .arg(probe.join("Cargo.toml"))
+            .arg("--")
+            .arg(&binding)
+            .env("CARGO_TARGET_DIR", &target_dir)
+            .output()?;
+        assert!(
+            output.status.success(),
+            "C++ capability probe failed in {}:\n{}\n{}",
+            probe.display(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let binding_manifest = format!(
+            r#"[package]
+name = "dynamic-binding-fixture"
+version = "0.0.0"
+edition = "2024"
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+cxx = {{ version = "1.0", features = ["c++20"] }}
+cxx-auto = {{ path = "{project}" }}
+moveref = {{ version = "1.0", default-features = false }}
+
+[build-dependencies]
+cxx-build = "1.0"
+"#
+        );
+        fs::write(binding.join("Cargo.toml"), binding_manifest)?;
+        let output = Command::new("cargo")
+            .args(["build", "--quiet", "--manifest-path"])
+            .arg(binding.join("Cargo.toml"))
+            .env("CARGO_TARGET_DIR", &target_dir)
+            .output()?;
+        assert!(
+            output.status.success(),
+            "generated binding build failed in {}:\n{}\n{}",
+            binding.display(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let library_name = format!(
+            "{}dynamic_binding_fixture.{}",
+            std::env::consts::DLL_PREFIX,
+            std::env::consts::DLL_EXTENSION
+        );
+        let library_path = root.join("target/debug").join(library_name);
+        // SAFETY: the library is built from the checked-in fixture sources above.
+        let library = unsafe { libloading::Library::new(library_path)? };
+        // SAFETY: the fixture exports compare_number with exactly this C ABI signature.
+        let compare: libloading::Symbol<'_, unsafe extern "C" fn(i32, i32) -> i32> =
+            unsafe { library.get(b"compare_number")? };
+        let comparisons: [(i32, i32, i32); 5] = [
+            (4, 7, -1),
+            (7, 4, 1),
+            (7, 7, 0),
+            (i32::MIN, i32::MAX, -1),
+            (i32::MAX, i32::MIN, 1),
+        ];
+        for (lhs, rhs, expected) in comparisons {
+            // SAFETY: the loaded symbol has the fixture's C ABI and accepts every i32 pair.
+            let actual = unsafe { compare(lhs, rhs) };
+            assert_eq!(actual, expected, "comparing {lhs} and {rhs}");
+        }
+        drop(library);
+        fs::remove_dir_all(root)?;
+        Ok(())
+    }
+}

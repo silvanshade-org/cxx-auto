@@ -11,7 +11,7 @@ notice = "warn"
 [licenses]
 unlicensed = "deny"
 allow = [
-    "Unicode-DFS-2016",
+  "Unicode-DFS-2016",
 ]
 copyleft = "warn"
 allow-osi-fsf-free = "both"
@@ -19,5 +19,4 @@ default = "deny"
 
 [licenses.private]
 ignore = false
-registries = [
-]
+registries = []

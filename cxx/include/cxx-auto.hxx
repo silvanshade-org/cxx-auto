@@ -30,9 +30,19 @@ using c_time_t = time_t;
 // NOLINTEND(google-runtime-int)
 
 namespace cxx_auto::detection {
+/// Test exact membership in a finite type pack.
+/// # Specification
+/// trivial.
 template<typename T, typename... U>
 concept same_as_any_of = (std::same_as<T, U> or ...);
 
+/// Detect equality on const lvalues.
+/// # Specification
+/// - provides: true exactly when const T lvalues support == with a bool result.
+/// - panics: none.
+/// # Adequacy
+/// - hypothesis: a mutable-only overload and a bool-like proxy must both differ from a const bool overload.
+/// - witness: cxx/tests/probes.cxx (probes).
 template<typename T>
 concept has_operator_equal = requires(T const& lhs, T const& rhs) { //
   {
@@ -40,6 +50,10 @@ concept has_operator_equal = requires(T const& lhs, T const& rhs) { //
   } -> std::same_as<bool>;
 };
 
+/// Detect inequality on const lvalues.
+/// # Specification
+/// - provides: true exactly when const T lvalues support != with a bool result.
+/// - panics: none.
 template<typename T>
 concept has_operator_not_equal = requires(T const& lhs, T const& rhs) { //
   {
@@ -47,6 +61,10 @@ concept has_operator_not_equal = requires(T const& lhs, T const& rhs) { //
   } -> std::same_as<bool>;
 };
 
+/// Detect strict less-than on const lvalues.
+/// # Specification
+/// - provides: true exactly when const T lvalues support < with a bool result.
+/// - panics: none.
 template<typename T>
 concept has_operator_less_than = requires(T const& lhs, T const& rhs) { //
   {
@@ -54,6 +72,10 @@ concept has_operator_less_than = requires(T const& lhs, T const& rhs) { //
   } -> std::same_as<bool>;
 };
 
+/// Detect non-strict less-than on const lvalues.
+/// # Specification
+/// - provides: true exactly when const T lvalues support <= with a bool result.
+/// - panics: none.
 template<typename T>
 concept has_operator_less_than_or_equal = requires(T const& lhs, T const& rhs) { //
   {
@@ -61,6 +83,10 @@ concept has_operator_less_than_or_equal = requires(T const& lhs, T const& rhs) {
   } -> std::same_as<bool>;
 };
 
+/// Detect strict greater-than on const lvalues.
+/// # Specification
+/// - provides: true exactly when const T lvalues support > with a bool result.
+/// - panics: none.
 template<typename T>
 concept has_operator_greater_than = requires(T const& lhs, T const& rhs) { //
   {
@@ -68,6 +94,10 @@ concept has_operator_greater_than = requires(T const& lhs, T const& rhs) { //
   } -> std::same_as<bool>;
 };
 
+/// Detect non-strict greater-than on const lvalues.
+/// # Specification
+/// - provides: true exactly when const T lvalues support >= with a bool result.
+/// - panics: none.
 template<typename T>
 concept has_operator_greater_than_or_equal = requires(T const& lhs, T const& rhs) { //
   {
@@ -75,11 +105,22 @@ concept has_operator_greater_than_or_equal = requires(T const& lhs, T const& rhs
   } -> std::same_as<bool>;
 };
 
+/// Detect a standard three-way ordering category.
+/// # Specification
+/// - provides: true exactly when const T lvalues support <=> yielding strong, weak, or partial ordering.
+/// - panics: none.
+/// # Adequacy
+/// - hypothesis: weak and partial categories must be accepted while an unrelated result is rejected.
+/// - witness: cxx/tests/probes.cxx (probes).
 template<typename T>
 concept has_operator_three_way_comparison = requires(T const& lhs, T const& rhs) { //
-  requires same_as_any_of<decltype(lhs <=> rhs), std::partial_ordering, std::strong_ordering>;
+  requires same_as_any_of<decltype(lhs <=> rhs), std::strong_ordering, std::weak_ordering, std::partial_ordering>;
 };
 
+/// Detect a standard hash of a const value.
+/// # Specification
+/// - provides: true exactly when std::hash<T> is invocable on const T and yields std::size_t.
+/// - panics: none.
 template<typename T>
 concept is_std_hashable = requires(T const& arg) { //
   {
@@ -87,6 +128,10 @@ concept is_std_hashable = requires(T const& arg) { //
   } -> std::same_as<std::size_t>;
 };
 
+/// Detect an explicit conversion operator yielding std::string.
+/// # Specification
+/// - provides: true exactly when a const T has a callable operator std::string() returning std::string.
+/// - panics: none.
 template<typename T>
 concept has_operator_std_string = requires(T const& arg) { //
   {
@@ -94,6 +139,10 @@ concept has_operator_std_string = requires(T const& arg) { //
   } -> std::same_as<std::string>;
 };
 
+/// Detect an explicit conversion operator yielding std::string_view.
+/// # Specification
+/// - provides: true exactly when a const T has a callable operator std::string_view() returning std::string_view.
+/// - panics: none.
 template<typename T>
 concept has_operator_std_string_view = requires(T const& arg) { //
   {
@@ -101,6 +150,10 @@ concept has_operator_std_string_view = requires(T const& arg) { //
   } -> std::same_as<std::string_view>;
 };
 
+/// Detect std::to_string for a const value.
+/// # Specification
+/// - provides: true exactly when std::to_string(T const&) is valid and yields std::string.
+/// - panics: none.
 template<typename T>
 concept has_to_string = requires(T const& arg) { //
   {
@@ -108,6 +161,10 @@ concept has_to_string = requires(T const& arg) { //
   } -> std::same_as<std::string>;
 };
 
+/// Detect insertion of a const value into an output stream.
+/// # Specification
+/// - provides: true exactly when inserting const T into std::ostream yields std::ostream&.
+/// - panics: none.
 template<typename T>
 concept has_operator_ostream_left_shift = requires(T const& arg, std::ostream& os) { //
   {
@@ -115,6 +172,10 @@ concept has_operator_ostream_left_shift = requires(T const& arg, std::ostream& o
   } -> std::same_as<std::ostream&>;
 };
 
+/// Detect construction from a pair of input iterators.
+/// # Specification
+/// - provides: true exactly when It is an input iterator and T{first, last} is valid with type T.
+/// - panics: none.
 template<typename T, typename It>
 concept is_constructible_from_iterator = requires(It first, It last) { //
   requires std::input_iterator<It>;
@@ -123,21 +184,42 @@ concept is_constructible_from_iterator = requires(It first, It last) { //
   } -> std::same_as<T>;
 };
 
+/// Detect the standard range concept.
+/// # Specification
+/// trivial.
 template<typename T>
 concept is_iterable = std::ranges::range<T>;
 
+/// Detect an input range whose value type matches V.
+/// # Specification
+/// - provides: true exactly when T is an input range and its iterator value type equals remove_reference_t<V>.
+/// - panics: none.
 template<typename T, typename V>
 concept is_input_iterable = requires { //
   requires std::ranges::input_range<T>;
   requires std::same_as<std::iter_value_t<std::ranges::iterator_t<T>>, std::remove_reference_t<V>>;
 };
 
+/// Detect a mutable-lvalue input iterator.
+/// # Specification
+/// - provides: true exactly when T is an input iterator whose dereference type is value_type&.
+/// - panics: none.
+/// # Adequacy
+/// - hypothesis: a mutable iterator differs from a const iterator and a value-producing iterator.
+/// - witness: cxx/tests/probes.cxx (probes).
 template<typename T>
 concept is_input_copy_iterator = requires { //
   requires std::input_iterator<T>;
   requires std::same_as<std::iter_reference_t<T>, std::add_lvalue_reference_t<std::iter_value_t<T>>>;
 };
 
+/// Detect an rvalue input iterator.
+/// # Specification
+/// - provides: true exactly when T is an input iterator whose dereference type is value_type&&.
+/// - panics: none.
+/// # Adequacy
+/// - hypothesis: a move iterator differs from a mutable-lvalue and const-lvalue iterator.
+/// - witness: cxx/tests/probes.cxx (probes).
 template<typename T>
 concept is_input_move_iterator = requires { //
   requires std::input_iterator<T>;
@@ -469,7 +551,7 @@ template<typename T, typename... Args>
 requires(cxx_is_constructible<T, Args...>())
 [[gnu::always_inline]]
 static inline auto
-cxx_placement_new(T* This [[clang::lifetimebound]], Args&&... args) noexcept -> void
+cxx_placement_new(T* This, Args&&... args) noexcept -> void
 {
   new (This) T(std::forward<Args>(args)...);
 }
@@ -478,7 +560,7 @@ template<typename T>
 requires(cxx_is_default_constructible<T>())
 [[gnu::always_inline]]
 static inline auto
-cxx_default_new(T* This [[clang::lifetimebound]]) noexcept -> void
+cxx_default_new(T* This) noexcept -> void
 {
   cxx_placement_new(This);
 }
@@ -487,7 +569,7 @@ template<typename T>
 requires(cxx_is_copy_constructible<T>())
 [[gnu::always_inline]]
 static inline auto
-cxx_copy_new(T* This [[clang::lifetimebound]], T const& that [[clang::lifetimebound]]) noexcept -> void
+cxx_copy_new(T* This, T const& that) noexcept -> void
 requires std::is_lvalue_reference_v<decltype(that)>
 {
   new (This) T(that);
@@ -497,7 +579,7 @@ template<typename T>
 requires(cxx_is_move_constructible<T>())
 [[gnu::always_inline]]
 static inline auto
-cxx_move_new(T* This [[clang::lifetimebound]], T&& that [[clang::lifetimebound]]) noexcept -> void
+cxx_move_new(T* This, T&& that) noexcept -> void
 requires std::is_rvalue_reference_v<decltype(that)>
 {
   new (This) T(std::forward<T>(that));
@@ -507,7 +589,7 @@ template<typename T>
 requires(cxx_is_destructible<T>())
 [[gnu::always_inline]]
 static inline auto
-cxx_destruct(T* This [[clang::lifetimebound]]) -> void
+cxx_destruct(T* This) noexcept -> void
 {
   std::destroy_at(This);
 }
@@ -516,7 +598,7 @@ template<typename T>
 requires(cxx_has_operator_equal<T>())
 [[gnu::always_inline]]
 static inline auto
-cxx_operator_equal(T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]) noexcept -> bool
+cxx_operator_equal(T const& This, T const& That) noexcept -> bool
 {
   return (This == That);
 }
@@ -525,7 +607,7 @@ template<typename T>
 requires(cxx_has_operator_not_equal<T>())
 [[gnu::always_inline]]
 static inline auto
-cxx_operator_not_equal(T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]) noexcept -> bool
+cxx_operator_not_equal(T const& This, T const& That) noexcept -> bool
 {
   return (This != That);
 }
@@ -534,7 +616,7 @@ template<typename T>
 requires(cxx_has_operator_less_than<T>())
 [[gnu::always_inline]]
 static inline auto
-cxx_operator_less_than(T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]) noexcept -> bool
+cxx_operator_less_than(T const& This, T const& That) noexcept -> bool
 {
   return (This < That);
 }
@@ -543,7 +625,7 @@ template<typename T>
 requires(cxx_has_operator_less_than_or_equal<T>())
 [[gnu::always_inline]]
 static inline auto
-cxx_operator_less_than_or_equal(T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]) noexcept
+cxx_operator_less_than_or_equal(T const& This, T const& That) noexcept
   -> bool
 {
   return (This <= That);
@@ -553,7 +635,7 @@ template<typename T>
 requires(cxx_has_operator_greater_than<T>())
 [[gnu::always_inline]]
 static inline auto
-cxx_operator_greater_than(T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]) noexcept
+cxx_operator_greater_than(T const& This, T const& That) noexcept
   -> bool
 {
   return (This > That);
@@ -564,20 +646,27 @@ requires(cxx_has_operator_greater_than_or_equal<T>())
 [[gnu::always_inline]]
 static inline auto
 cxx_operator_greater_than_or_equal(
-  T const& This [[clang::lifetimebound]],
-  T const& That [[clang::lifetimebound]]
+  T const& This,
+  T const& That
 ) noexcept -> bool
 {
   return (This >= That);
 }
 
+/// Translate a standard three-way comparison into the Rust-facing ordering code.
+/// # Specification
+/// - provides: -1, 0, 1 for less, equivalent, greater; int8_t maximum for unordered.
+/// - panics: a throwing comparison terminates at this noexcept boundary.
+/// # Adequacy
+/// - hypothesis: weak equivalence and partial unordered results must differ from greater.
+/// - witness: cxx/tests/probes.cxx (probes).
 template<typename T>
 requires(detection::has_operator_three_way_comparison<T>)
 [[gnu::always_inline]]
 static inline auto
 cxx_operator_three_way_comparison(
-  T const& This [[clang::lifetimebound]],
-  T const& That [[clang::lifetimebound]]
+  T const& This,
+  T const& That
 ) noexcept -> int8_t
 {
   auto result = (This <=> That);
@@ -592,34 +681,39 @@ cxx_operator_three_way_comparison(
   }
 }
 
+/// Translate legacy less-than and equality into the Rust-facing ordering code.
+/// # Specification
+/// - provides: -1 for This < That, 1 for That < This, 0 for equality, int8_t maximum otherwise.
+/// - panics: a throwing comparison terminates at this noexcept boundary.
+/// # Adequacy
+/// - hypothesis: incomparable unequal values must not be confused with greater values.
+/// - witness: cxx/tests/probes.cxx (probes).
 template<typename T>
 requires(not detection::has_operator_three_way_comparison<T> and detection::has_operator_less_than<T> and detection::has_operator_equal<T>)
 [[gnu::always_inline]]
 static inline auto
 cxx_operator_three_way_comparison(
-  T const& This [[clang::lifetimebound]],
-  T const& That [[clang::lifetimebound]]
+  T const& This,
+  T const& That
 ) noexcept -> int8_t
 {
-  auto le = (This < That);
-  auto eq = (This == That);
-
-  if (le and not eq) {
+  if (This < That) {
     return -1;
-  } else if (not le and not eq) { // NOLINT(llvm-else-after-return, readability-else-after-return)
-    return 1;
-  } else if (not le and eq) {
-    return 0;
-  } else {
-    return std::numeric_limits<int8_t>::max();
   }
+  if (That < This) {
+    return 1;
+  }
+  if (This == That) {
+    return 0;
+  }
+  return std::numeric_limits<int8_t>::max();
 }
 
 template<typename T>
 requires(detection::is_std_hashable<T>)
 [[gnu::always_inline]]
 static inline auto
-cxx_hash(T const& This [[clang::lifetimebound]]) noexcept -> size_t
+cxx_hash(T const& This) noexcept -> size_t
 {
   return std::hash<T>{}(This);
 }
@@ -628,7 +722,7 @@ template<typename T>
 requires(detection::has_operator_ostream_left_shift<T>)
 [[gnu::always_inline]]
 static inline auto
-cxx_debug(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
+cxx_debug(T const& This) noexcept -> rust::String
 {
   std::ostringstream os;
   os << This;
@@ -639,7 +733,7 @@ template<typename T>
 requires(detection::has_to_string<T>)
 [[gnu::always_inline]]
 static inline auto
-cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
+cxx_display(T const& This) noexcept -> rust::String
 {
   return rust::String::lossy(std::to_string(This));
 }
@@ -648,7 +742,7 @@ template<typename T>
 requires(not detection::has_to_string<T> and detection::has_operator_std_string<T>)
 [[gnu::always_inline]]
 static inline auto
-cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
+cxx_display(T const& This) noexcept -> rust::String
 {
   return rust::String::lossy(This.operator std::string());
 }
@@ -658,7 +752,7 @@ template<typename T>
 requires(not detection::has_to_string<T> and not detection::has_operator_std_string<T> and detection::has_operator_std_string_view<T>)
 [[gnu::always_inline]]
 static inline auto
-cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
+cxx_display(T const& This) noexcept -> rust::String
 {
   return rust::String::lossy(std::string{ This.operator std::string_view() });
 }
@@ -711,229 +805,229 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
   CXX_AUTO_PRELUDE_TYPE_DEFINE(__VA_ARGS__)                                                                            \
   using CXX_NAME = Self;                                                                                               \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_abi_align() noexcept -> size_t                                                      \
   {                                                                                                                    \
     return ::cxx_auto::cxx_abi_align<Self>();                                                                          \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_abi_size() noexcept -> size_t                                                       \
   {                                                                                                                    \
     return ::cxx_auto::cxx_abi_size<Self>();                                                                           \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_default_constructible() noexcept -> bool                                         \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_default_constructible<Self>();                                                           \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_copy_constructible() noexcept -> bool                                            \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_copy_constructible<Self>();                                                              \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_move_constructible() noexcept -> bool                                            \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_move_constructible<Self>();                                                              \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_destructible() noexcept -> bool                                                  \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_destructible<Self>();                                                                    \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_trivially_copyable() noexcept -> bool                                            \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_trivially_copyable<Self>();                                                              \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_trivially_movable() noexcept -> bool                                             \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_trivially_movable<Self>();                                                               \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_trivially_destructible() noexcept -> bool                                        \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_trivially_destructible<Self>();                                                          \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_equality_comparable() noexcept -> bool                                           \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_equality_comparable<Self>();                                                             \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_has_operator_equal() noexcept -> bool                                               \
   {                                                                                                                    \
     return ::cxx_auto::cxx_has_operator_equal<Self>();                                                                 \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_has_operator_not_equal() noexcept -> bool                                           \
   {                                                                                                                    \
     return ::cxx_auto::cxx_has_operator_not_equal<Self>();                                                             \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_has_operator_less_than() noexcept -> bool                                           \
   {                                                                                                                    \
     return ::cxx_auto::cxx_has_operator_less_than<Self>();                                                             \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_has_operator_less_than_or_equal() noexcept -> bool                                  \
   {                                                                                                                    \
     return ::cxx_auto::cxx_has_operator_less_than_or_equal<Self>();                                                    \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_has_operator_greater_than() noexcept -> bool                                        \
   {                                                                                                                    \
     return ::cxx_auto::cxx_has_operator_greater_than<Self>();                                                          \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_has_operator_greater_than_or_equal() noexcept -> bool                               \
   {                                                                                                                    \
     return ::cxx_auto::cxx_has_operator_greater_than_or_equal<Self>();                                                 \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_has_operator_three_way_comparison() noexcept -> bool                                \
   {                                                                                                                    \
     return ::cxx_auto::cxx_has_operator_three_way_comparison<Self>();                                                  \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_partially_ordered() noexcept -> bool                                             \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_partially_ordered<Self>();                                                               \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_totally_ordered() noexcept -> bool                                               \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_totally_ordered<Self>();                                                                 \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_hashable() noexcept -> bool                                                      \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_hashable<Self>();                                                                        \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_debuggable() noexcept -> bool                                                    \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_debuggable<Self>();                                                                      \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto cxx_is_displayable() noexcept -> bool                                                   \
   {                                                                                                                    \
     return ::cxx_auto::cxx_is_displayable<Self>();                                                                     \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_cxx_extern_type_trivial() noexcept -> bool                             \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_cxx_extern_type_trivial<Self>();                                               \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_unpin() noexcept -> bool                                               \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_unpin<Self>();                                                                 \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_send() noexcept -> bool                                                \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_send<Self>();                                                                  \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_sync() noexcept -> bool                                                \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_sync<Self>();                                                                  \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_drop() noexcept -> bool                                                \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_drop<Self>();                                                                  \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_copy() noexcept -> bool                                                \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_copy<Self>();                                                                  \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_default() noexcept -> bool                                             \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_default<Self>();                                                               \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_moveref_copy_new() noexcept -> bool                                    \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_moveref_copy_new<Self>();                                                      \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_moveref_move_new() noexcept -> bool                                    \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_moveref_move_new<Self>();                                                      \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_eq() noexcept -> bool                                                  \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_eq<Self>();                                                                    \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_partial_eq() noexcept -> bool                                          \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_partial_eq<Self>();                                                            \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_partial_ord() noexcept -> bool                                         \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_partial_ord<Self>();                                                           \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_ord() noexcept -> bool                                                 \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_ord<Self>();                                                                   \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_hash() noexcept -> bool                                                \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_hash<Self>();                                                                  \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_debug() noexcept -> bool                                               \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_debug<Self>();                                                                 \
   }                                                                                                                    \
                                                                                                                        \
-  [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
+  [[nodiscard]] [[maybe_unused]] [[gnu::always_inline]] [[gnu::const]]                                                                  \
   constexpr static inline auto rust_should_impl_display() noexcept -> bool                                             \
   {                                                                                                                    \
     return ::cxx_auto::rust_should_impl_display<Self>();                                                               \
@@ -941,16 +1035,16 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_default_constructible<T>())                                  \
-  [[gnu::always_inline]]                                                                                               \
-  static inline auto cxx_default_new(T* This [[clang::lifetimebound]]) noexcept -> void                                \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
+  static inline auto cxx_default_new(T* This) noexcept -> void                                \
   {                                                                                                                    \
     return ::cxx_auto::cxx_default_new(This);                                                                          \
   }                                                                                                                    \
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_copy_constructible<T>())                                     \
-  [[gnu::always_inline]]                                                                                               \
-  static inline auto cxx_copy_new(T* This [[clang::lifetimebound]], T const& that [[clang::lifetimebound]]) noexcept   \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
+  static inline auto cxx_copy_new(T* This, T const& that) noexcept   \
     -> void                                                                                                            \
   {                                                                                                                    \
     return ::cxx_auto::cxx_copy_new(This, that);                                                                       \
@@ -958,8 +1052,8 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_move_constructible<T>())                                     \
-  [[gnu::always_inline]]                                                                                               \
-  static inline auto cxx_move_new(T* This [[clang::lifetimebound]], T* that [[clang::lifetimebound]]) noexcept -> void \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
+  static inline auto cxx_move_new(T* This, T* that) noexcept -> void \
   {                                                                                                                    \
     /* NOLINTNEXTLINE(hicpp-move-const-arg, performance-move-const-arg) */                                             \
     return ::cxx_auto::cxx_move_new(This, ::std::move(*that));                                                         \
@@ -967,17 +1061,17 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_destructible<T>())                                           \
-  [[gnu::always_inline]]                                                                                               \
-  static inline auto cxx_destruct(T* This [[clang::lifetimebound]]) noexcept -> void                                   \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
+  static inline auto cxx_destruct(T* This) noexcept -> void                                   \
   {                                                                                                                    \
     return ::cxx_auto::cxx_destruct(This);                                                                             \
   }                                                                                                                    \
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_equal<T>())                                        \
-  [[gnu::always_inline]]                                                                                               \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
   static inline auto cxx_operator_equal(                                                                               \
-    T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]                                     \
+    T const& This, T const& That                                     \
   ) noexcept -> bool                                                                                                   \
   {                                                                                                                    \
     return ::cxx_auto::cxx_operator_equal(This, That);                                                                 \
@@ -985,9 +1079,9 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_not_equal<T>())                                    \
-  [[gnu::always_inline]]                                                                                               \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
   static inline auto cxx_operator_not_equal(                                                                           \
-    T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]                                     \
+    T const& This, T const& That                                     \
   ) noexcept -> bool                                                                                                   \
   {                                                                                                                    \
     return ::cxx_auto::cxx_operator_not_equal(This, That);                                                             \
@@ -995,9 +1089,9 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_less_than<T>())                                    \
-  [[gnu::always_inline]]                                                                                               \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
   static inline auto cxx_operator_less_than(                                                                           \
-    T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]                                     \
+    T const& This, T const& That                                     \
   ) noexcept -> bool                                                                                                   \
   {                                                                                                                    \
     return ::cxx_auto::cxx_operator_less_than(This, That);                                                             \
@@ -1005,9 +1099,9 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_less_than_or_equal<T>())                           \
-  [[gnu::always_inline]]                                                                                               \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
   static inline auto cxx_operator_less_than_or_equal(                                                                  \
-    T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]                                     \
+    T const& This, T const& That                                     \
   ) noexcept -> bool                                                                                                   \
   {                                                                                                                    \
     return ::cxx_auto::cxx_operator_less_than_or_equal(This, That);                                                    \
@@ -1015,9 +1109,9 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_greater_than<T>())                                 \
-  [[gnu::always_inline]]                                                                                               \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
   static inline auto cxx_operator_greater_than(                                                                        \
-    T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]                                     \
+    T const& This, T const& That                                     \
   ) noexcept -> bool                                                                                                   \
   {                                                                                                                    \
     return ::cxx_auto::cxx_operator_greater_than(This, That);                                                          \
@@ -1025,9 +1119,9 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_greater_than_or_equal<T>())                        \
-  [[gnu::always_inline]]                                                                                               \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
   static inline auto cxx_operator_greater_than_or_equal(                                                               \
-    T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]                                     \
+    T const& This, T const& That                                     \
   ) noexcept -> bool                                                                                                   \
   {                                                                                                                    \
     return ::cxx_auto::cxx_operator_greater_than_or_equal(This, That);                                                 \
@@ -1035,9 +1129,9 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_three_way_comparison<T>())                         \
-  [[gnu::always_inline]]                                                                                               \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
   static inline auto cxx_operator_three_way_comparison(                                                                \
-    T const& This [[clang::lifetimebound]], T const& That [[clang::lifetimebound]]                                     \
+    T const& This, T const& That                                     \
   ) noexcept -> int8_t                                                                                                 \
   {                                                                                                                    \
     return ::cxx_auto::cxx_operator_three_way_comparison(This, That);                                                  \
@@ -1045,16 +1139,16 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_hashable<T>())                                               \
-  [[gnu::always_inline]]                                                                                               \
-  static inline auto cxx_hash(T const& This [[clang::lifetimebound]]) noexcept -> size_t                               \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
+  static inline auto cxx_hash(T const& This) noexcept -> size_t                               \
   {                                                                                                                    \
     return ::cxx_auto::cxx_hash(This);                                                                                 \
   }                                                                                                                    \
                                                                                                                        \
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_debuggable<T>())                                             \
-  [[gnu::always_inline]]                                                                                               \
-  static inline auto cxx_debug(T const& This [[clang::lifetimebound]]) noexcept -> rust::string                        \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                                               \
+  static inline auto cxx_debug(T const& This) noexcept -> rust::string                        \
   {                                                                                                                    \
     return ::cxx_auto::cxx_debug(This);                                                                                \
   }                                                                                                                    \
@@ -1062,7 +1156,7 @@ cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::String
   template<typename T>                                                                                                 \
   requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_displayable<T>())                                            \
   [[gnu::always_inline]]                                                                                               \
-  static inline auto cxx_display(T const& This [[clang::lifetimebound]]) noexcept -> rust::string                      \
+  static inline auto cxx_display(T const& This) noexcept -> rust::string                      \
   {                                                                                                                    \
     return ::cxx_auto::cxx_display(This);                                                                              \
   }

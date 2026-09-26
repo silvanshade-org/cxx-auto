@@ -16,7 +16,7 @@ This repository is public. Read this file and `docs/agents/baseline.md`, then ev
 
 | Shared site | Project binding |
 | ----------- | --------------- |
-| Rust Shape: crate names, categories, and data path | The root package is `cxx-auto`; the existing `xtask` is repository tooling. The path is C++ capability probe → generated Rust artifact → C++ bridge. Do not invent a category prefix for two packages. |
+| Rust Shape: crate names, categories, and data path | The root package is `cxx-auto`; obsolete standalone `xtask` tooling has been removed. The path is C++ capability probe → generated Rust artifact → C++ bridge. A category prefix has no meaning for one package. |
 | Rust Correctness: checker and machine | Trait detection in `cxx/include/cxx-auto.hxx` and artifact emission in `src/cxx_auto_artifact_info.rs` are the correctness engines. |
 | Rust Representation: `Maybe<T, R>` | Build the type in this workspace only if an absence/reason distinction needs it. Existing exported signatures and all callers change together. |
 | Rust Enforcement and Verification | `rust-toolchain.toml` pins this layer’s compiler; `cargo xtask` exposes its existing checks. The `cxx-auto-modernize-implementation` layer adds the workspace lint wall and `mise run check`. Shared plugin-policy commands are source examples, not installed here. |

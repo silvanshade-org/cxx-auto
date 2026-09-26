@@ -1,0 +1,29 @@
+name: setup C++26 compiler
+# The first main image has not been published during bootstrap. Only the bare
+# runner pays for LLVM 22; image-backed jobs already contain this compiler.
+description: Install Clang 22 on a Linux runner when the CI image is unavailable
+inputs:
+  install:
+    description: Install LLVM from its signed Noble repository
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - if: ${{ inputs.install == 'true' }}
+      shell: bash
+      run: sudo apt-get update
+    - if: ${{ inputs.install == 'true' }}
+      shell: bash
+      run: sudo apt-get install -y --no-install-recommends ca-certificates curl gnupg cmake
+    - if: ${{ inputs.install == 'true' }}
+      shell: bash
+      run: curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg
+    - if: ${{ inputs.install == 'true' }}
+      shell: bash
+      run: echo 'deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] https://apt.llvm.org/noble/ llvm-toolchain-noble-22 main' | sudo tee /etc/apt/sources.list.d/llvm-22.list
+    - if: ${{ inputs.install == 'true' }}
+      shell: bash
+      run: sudo apt-get update
+    - if: ${{ inputs.install == 'true' }}
+      shell: bash
+      run: sudo apt-get install -y --no-install-recommends clang-22
