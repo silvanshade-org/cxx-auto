@@ -2,7 +2,7 @@
 /// implementations.
 pub mod auto
 {
-    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/auto.rs"));
+    include!(concat!(env!("OUT_DIR"), "/auto.rs"));
 }
 
 #[cxx::bridge(namespace = "demo")]

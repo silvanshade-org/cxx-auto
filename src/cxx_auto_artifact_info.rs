@@ -4,8 +4,8 @@ use syn::punctuated::Punctuated;
 /// Resolved C++ layout and capabilities used to emit one Rust binding.
 ///
 /// # Specification
-/// - requires: the C++ probe results describe one stable type and its true
-///   layout.
+/// - requires: the fields come from one decoded type record (`crate::record`),
+///   so names are valid identifiers and the layout is the C++ type's own.
 /// - ensures: each capability is retained independently for the generated type.
 /// - panics: none.
 #[expect(
@@ -16,39 +16,31 @@ use syn::punctuated::Punctuated;
 pub struct CxxAutoArtifactInfo
 {
     /// Path segments used to place the generated Rust type.
-    pub path_components: ::alloc::vec::Vec<&'static str>,
+    pub path_components: ::alloc::vec::Vec<::alloc::string::String>,
     /// Immediate child module names below this type.
-    pub path_descendants: ::alloc::vec::Vec<&'static str>,
-    /// Header declaring the bridged C++ type.
-    pub cxx_include: &'static str,
+    pub path_descendants: ::alloc::vec::Vec<::alloc::string::String>,
     /// Header declaring the proxy functions called by the generated binding.
-    pub cxx_proxy_include: &'static str,
+    pub cxx_proxy_include: ::alloc::string::String,
     /// C++ namespace containing the bridged type.
-    pub cxx_namespace: &'static str,
+    pub cxx_namespace: ::alloc::string::String,
     /// C++ namespace containing the proxy functions.
-    pub cxx_proxy_namespace: &'static str,
+    pub cxx_proxy_namespace: ::alloc::string::String,
     /// C++ type name used by the bridge.
-    pub cxx_name: &'static str,
+    pub cxx_name: ::alloc::string::String,
     /// Rust type name written in the generated module.
-    pub rust_name: &'static str,
-    /// Rust lifetime names and their outlives bounds.
-    pub lifetimes: ::indexmap::IndexMap<&'static str, ::alloc::vec::Vec<&'static str>>,
+    pub rust_name: ::alloc::string::String,
+    /// Rust lifetime names, without the leading `'`, each with the names of
+    /// the lifetimes it outlives, in declaration order.
+    pub lifetimes: ::alloc::vec::Vec<(
+        ::alloc::string::String,
+        ::alloc::vec::Vec<::alloc::string::String>,
+    )>,
     /// C++ type alignment in bytes.
     pub align: usize,
     /// C++ type size in bytes.
     pub size: usize,
-    /// Whether const C++ equality returns bool.
-    pub cxx_has_operator_equal: bool,
-    /// Whether const C++ inequality returns bool.
+    /// Whether C++ declares its own `operator!=`, which Rust's `ne` then calls.
     pub cxx_has_operator_not_equal: bool,
-    /// Whether const C++ less-than returns bool.
-    pub cxx_has_operator_less_than: bool,
-    /// Whether const C++ less-than-or-equal returns bool.
-    pub cxx_has_operator_less_than_or_equal: bool,
-    /// Whether const C++ greater-than returns bool.
-    pub cxx_has_operator_greater_than: bool,
-    /// Whether const C++ greater-than-or-equal returns bool.
-    pub cxx_has_operator_greater_than_or_equal: bool,
     /// Whether CXX may pass this type by value.
     pub is_rust_cxx_extern_type_trivial: bool,
     /// Whether Rust may move this type after pinning.
@@ -103,7 +95,7 @@ impl CxxAutoArtifactInfo
     ) -> syn::File
     {
         let span = Span::call_site();
-        let ident: &syn::Ident = &syn::Ident::new(self.rust_name, Span::call_site());
+        let ident: &syn::Ident = &syn::Ident::new(&self.rust_name, Span::call_site());
         let align = &proc_macro2::Literal::usize_unsuffixed(self.align);
         let size = &proc_macro2::Literal::usize_unsuffixed(self.size);
         let generics_pair = emit_generics(self, false);
@@ -124,6 +116,7 @@ impl CxxAutoArtifactInfo
         let item_struct = emit_struct(self, align, size, ident, generics_binder, generics);
         let item_impl_cxx_extern_type =
             emit_impl_cxx_extern_type(self, ident, generics_binder, generics);
+        let items_impl_send_sync = emit_impls_send_sync(self, ident, generics_binder, generics);
         let item_impl_drop = emit_impl_drop(self, ident, generics_binder, generics);
         let item_impl_debug = emit_impl_debug(self, ident, generics_binder, generics);
         let item_impl_default = emit_impl_default(self, ident, generics_binder, generics);
@@ -143,6 +136,7 @@ impl CxxAutoArtifactInfo
             #(#items_path_descendants)*
             #item_struct
             #item_impl_cxx_extern_type
+            #(#items_impl_send_sync)*
             #item_impl_drop
             #item_impl_default
             #item_impl_moveit_copy_new
@@ -176,8 +170,8 @@ impl CxxAutoArtifactInfo
     #[inline]
     pub fn write_module_for_dir(
         auto_out_dir_root: &std::path::Path,
-        path_components: &[&str],
-        path_descendants: &[&str],
+        path_components: &[::alloc::string::String],
+        path_descendants: &[::alloc::string::String],
     ) -> crate::BoxResult<()>
     {
         use quote::ToTokens as _;
@@ -331,7 +325,7 @@ fn emit_field(
 ///   arguments on the type.
 /// - panics: malformed generated identifiers may be rejected by syn.
 #[cfg(feature = "alloc")]
-fn emit_generics(
+pub fn emit_generics(
     info: &CxxAutoArtifactInfo,
     all_static: bool,
 ) -> (syn::Generics, syn::Generics)
@@ -339,8 +333,14 @@ fn emit_generics(
     let span = Span::call_site();
     let mut binder_params = Punctuated::<syn::GenericParam, syn::Token![,]>::new();
     let mut params = Punctuated::<syn::GenericParam, syn::Token![,]>::new();
-    for (name, bounds) in &info.lifetimes {
-        let name = if all_static { "static" } else { name };
+    for lifetime_and_bounds in &info.lifetimes {
+        let bounds = &lifetime_and_bounds.1;
+        let name = if all_static {
+            "static"
+        }
+        else {
+            lifetime_and_bounds.0.as_str()
+        };
 
         let lifetime = syn::Lifetime::new(&::alloc::format!("'{name}"), span);
         let lifetime_param = syn::LifetimeParam::new(lifetime);
@@ -348,7 +348,7 @@ fn emit_generics(
         let mut lifetime_param_binder = lifetime_param.clone();
         for bound in bounds {
             let lifetime = syn::Lifetime::new(&::alloc::format!("'{bound}"), span);
-            lifetime_param_binder.bounds.push_value(lifetime);
+            lifetime_param_binder.bounds.push(lifetime);
         }
 
         binder_params.push(syn::GenericParam::Lifetime(lifetime_param_binder));
@@ -464,7 +464,7 @@ fn emit_impl_debug(
         }
     }
     else {
-        let name = info.rust_name;
+        let name = info.rust_name.as_str();
         syn::parse_quote! {
             impl #generics_binder ::core::fmt::Debug for #ident #generics {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
@@ -644,8 +644,9 @@ fn emit_impl_eq(
 /// Select a Rust partial-ordering implementation.
 ///
 /// # Specification
-/// - provides: a `PartialOrd` impl and only the comparison overrides supported
-///   by C++.
+/// - provides: a `PartialOrd` impl whose `partial_cmp` makes one C++ three-way
+///   comparison, so `lt`, `le`, `gt`, and `ge` keep their default definitions
+///   and cannot disagree with it.
 /// - panics: malformed generated identifiers may be rejected by syn.
 #[cfg(feature = "alloc")]
 fn emit_impl_partial_ord(
@@ -656,38 +657,6 @@ fn emit_impl_partial_ord(
 ) -> Option<syn::ItemImpl>
 {
     info.is_rust_partial_ord.then(|| {
-        let lt: Option<syn::ImplItemFn> = info.cxx_has_operator_less_than.then(|| {
-            syn::parse_quote! {
-                #[inline]
-                fn lt(&self, other: &Self) -> bool {
-                    self::ffi::cxx_operator_less_than(self, other)
-                }
-            }
-        });
-        let le: Option<syn::ImplItemFn> = info.cxx_has_operator_less_than_or_equal.then(|| {
-            syn::parse_quote! {
-                #[inline]
-                fn le(&self, other: &Self) -> bool {
-                    self::ffi::cxx_operator_less_than_or_equal(self, other)
-                }
-            }
-        });
-        let gt: Option<syn::ImplItemFn> = info.cxx_has_operator_greater_than.then(|| {
-            syn::parse_quote! {
-                #[inline]
-                fn gt(&self, other: &Self) -> bool {
-                    self::ffi::cxx_operator_greater_than(self, other)
-                }
-            }
-        });
-        let ge: Option<syn::ImplItemFn> = info.cxx_has_operator_greater_than_or_equal.then(|| {
-            syn::parse_quote! {
-                #[inline]
-                fn ge(&self, other: &Self) -> bool {
-                    self::ffi::cxx_operator_greater_than_or_equal(self, other)
-                }
-            }
-        });
         let partial_cmp: syn::ImplItemFn = if info.is_rust_ord {
             syn::parse_quote! {
                 #[inline]
@@ -717,10 +686,6 @@ fn emit_impl_partial_ord(
         syn::parse_quote! {
             impl #generics_binder ::core::cmp::PartialOrd for #ident #generics {
                 #partial_cmp
-                #lt
-                #le
-                #gt
-                #ge
             }
         }
     })
@@ -873,23 +838,11 @@ fn emit_item_mod_cxx_bridge(
             unsafe fn cxx_destruct #generics (This: *mut #ident #generics);
         }
     });
-    let cxx_operator_equal: Option<syn::ForeignItemFn> = info.is_rust_eq.then(|| syn::parse_quote! {
+    let cxx_operator_equal: Option<syn::ForeignItemFn> = info.is_rust_partial_eq.then(|| syn::parse_quote! {
             fn cxx_operator_equal #generics (This: & #ident #generics, That: & #ident #generics) -> bool;
         });
-    let cxx_operator_not_equal: Option<syn::ForeignItemFn> = info.is_rust_eq.then(|| syn::parse_quote! {
+    let cxx_operator_not_equal: Option<syn::ForeignItemFn> = (info.is_rust_partial_eq && info.cxx_has_operator_not_equal).then(|| syn::parse_quote! {
             fn cxx_operator_not_equal #generics (This: & #ident #generics, That: & #ident #generics) -> bool;
-        });
-    let cxx_operator_less_than: Option<syn::ForeignItemFn> = info.cxx_has_operator_less_than.then(|| syn::parse_quote! {
-            fn cxx_operator_less_than #generics (This: & #ident #generics, That: & #ident #generics) -> bool;
-        });
-    let cxx_operator_less_than_or_equal: Option<syn::ForeignItemFn> = info.cxx_has_operator_less_than_or_equal.then(|| syn::parse_quote! {
-            fn cxx_operator_less_than_or_equal #generics (This: & #ident #generics, That: & #ident #generics) -> bool;
-        });
-    let cxx_operator_greater_than: Option<syn::ForeignItemFn> = info.cxx_has_operator_greater_than.then(|| syn::parse_quote! {
-            fn cxx_operator_greater_than #generics (This: & #ident #generics, That: & #ident #generics) -> bool;
-        });
-    let cxx_operator_greater_than_or_equal: Option<syn::ForeignItemFn> = info.cxx_has_operator_greater_than_or_equal.then(|| syn::parse_quote! {
-            fn cxx_operator_greater_than_or_equal #generics (This: & #ident #generics, That: & #ident #generics) -> bool;
         });
     let cxx_operator_three_way_comparison: Option<syn::ForeignItemFn> = info.is_rust_partial_ord.then(|| syn::parse_quote! {
             fn cxx_operator_three_way_comparison #generics (This: & #ident #generics, That: & #ident #generics) -> i8;
@@ -927,10 +880,6 @@ fn emit_item_mod_cxx_bridge(
                 #cxx_destruct
                 #cxx_operator_equal
                 #cxx_operator_not_equal
-                #cxx_operator_less_than
-                #cxx_operator_less_than_or_equal
-                #cxx_operator_greater_than
-                #cxx_operator_greater_than_or_equal
                 #cxx_operator_three_way_comparison
                 #cxx_hash
                 #cxx_debug
@@ -980,20 +929,56 @@ fn field_layout(size: &proc_macro2::Literal) -> syn::Field
     let ty = syn::parse_quote!([u8; #size]);
     emit_field(name, ty)
 }
-/// Prevent unintended Send and Sync auto-traits.
+/// Suppress the `Send` and `Sync` auto-traits unless C++ opted into both.
 ///
 /// # Specification
-/// - provides: a marker field when both send and sync are unavailable.
+/// - provides: a `!Send + !Sync` marker field unless both `is_rust_send` and
+///   `is_rust_sync` hold; `emit_impls_send_sync` then restores whichever one
+///   C++ opted into.
 /// - panics: malformed generated identifiers may be rejected by syn.
 #[cfg(feature = "alloc")]
 fn field_neither_send_nor_sync(info: &CxxAutoArtifactInfo) -> Option<syn::Field>
 {
-    let is_neither_send_nor_sync = !info.is_rust_send && !info.is_rust_sync;
-    is_neither_send_nor_sync.then(|| {
+    let is_both = info.is_rust_send && info.is_rust_sync;
+    (!is_both).then(|| {
         let name = "_neither_send_nor_sync";
         let ty = syn::parse_quote!(::core::marker::PhantomData<[*const u8; 0]>);
         emit_field(name, ty)
     })
+}
+/// Restore the one thread-safety trait C++ opted into when not both.
+///
+/// # Specification
+/// - provides: an `unsafe impl Send` or `unsafe impl Sync` for each opt-in when
+///   exactly one holds; nothing when neither or both hold, since the marker
+///   field is then either kept whole or absent.
+/// - requires: the C++ author's `rust_send` / `rust_sync` specialization is the
+///   soundness claim these impls rest on.
+/// - panics: malformed generated identifiers may be rejected by syn.
+#[cfg(feature = "alloc")]
+fn emit_impls_send_sync(
+    info: &CxxAutoArtifactInfo,
+    ident: &syn::Ident,
+    generics_binder: &syn::Generics,
+    generics: &syn::Generics,
+) -> ::alloc::vec::Vec<syn::ItemImpl>
+{
+    if info.is_rust_send == info.is_rust_sync {
+        return ::alloc::vec![];
+    }
+    let item: syn::ItemImpl = if info.is_rust_send {
+        syn::parse_quote! {
+            // SAFETY: the C++ type's author specialized `cxx_auto::rust_send`.
+            unsafe impl #generics_binder ::core::marker::Send for #ident #generics {}
+        }
+    }
+    else {
+        syn::parse_quote! {
+            // SAFETY: the C++ type's author specialized `cxx_auto::rust_sync`.
+            unsafe impl #generics_binder ::core::marker::Sync for #ident #generics {}
+        }
+    };
+    ::alloc::vec![item]
 }
 /// Pin types whose C++ move semantics forbid Rust Unpin.
 ///

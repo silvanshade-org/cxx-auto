@@ -1,5 +1,5 @@
-//! Generate Rust/C++ bindings from C++ type descriptions and expose C ABI
-//! wrappers.
+//! Generate Rust bindings for C++ types from type records compiled into object
+//! files, and expose C ABI wrappers.
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
 #![no_std]
@@ -12,8 +12,6 @@ extern crate std;
 
 /// Emit Rust structs and their CXX bridge implementations.
 mod cxx_auto_artifact_info;
-/// Parse C++ type descriptions into generated Rust items.
-mod cxx_auto_entry;
 /// Name the fallible artifact-generation boundary.
 mod error;
 /// Hold the C ABI wrapper definitions used by the bridge.
@@ -34,18 +32,17 @@ mod r#gen
     )]
     pub mod ctypes;
 }
-/// Walk type descriptions and write generated modules.
-mod processing;
+/// Generate the binding modules for a set of compiled objects.
+#[cfg(feature = "std")]
+mod generate;
+/// Decode the type records compiled into object files.
+#[cfg(feature = "std")]
+mod record;
 
-#[cfg(feature = "alloc")]
-pub use indexmap;
-
-#[cfg(feature = "alloc")]
-pub use crate::cxx_auto_artifact_info::CxxAutoArtifactInfo;
-#[cfg(feature = "alloc")]
-pub use crate::cxx_auto_entry::CxxAutoEntry;
 #[cfg(feature = "alloc")]
 pub use crate::error::*;
+#[cfg(feature = "std")]
+pub use crate::generate::generate;
 
 /// Nominal C ABI primitive wrappers for use in CXX bindings.
 pub mod ctypes
@@ -65,36 +62,4 @@ pub mod ctypes
     pub use crate::ffi::ctypes::c_ulonglong;
     pub use crate::ffi::ctypes::c_ushort;
     pub use crate::ffi::ctypes::c_void;
-}
-
-/// Generate the Rust modules for C++ type descriptions in `cfg_dir`.
-///
-/// # Specification
-/// - requires: `cfg_dir` contains type descriptions rooted at an auto
-///   directory.
-/// - ensures: `out_dir/src/auto.rs` and each described Rust bridge module are
-///   written.
-/// - fails: returns an I/O, input, or formatting error when generation cannot
-///   complete.
-/// - panics: malformed module identifiers may be rejected by syn.
-///
-/// # Adequacy
-/// - hypothesis: generated modules resolve and compare C++ values even when
-///   `cfg_dir` has a separate parent directory.
-/// - witness: `tests/dynamic_binding.rs`
-///   (`loads_generated_comparison_binding`).
-///
-/// # Errors
-///
-/// Will return `Err` if auto-generation of the C++ bindings fails.
-#[cfg(feature = "std")]
-#[inline]
-pub fn process_artifacts(
-    out_dir: &std::path::Path,
-    cfg_dir: &std::path::Path,
-) -> BoxResult<()>
-{
-    let out_dir = &out_dir.join("src");
-    crate::processing::process_src_auto_module(out_dir, cfg_dir)?;
-    Ok(())
 }

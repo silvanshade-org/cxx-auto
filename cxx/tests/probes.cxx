@@ -85,6 +85,15 @@ static_assert(cxx_auto::detection::is_input_copy_iterator<std::vector<int>::iter
 static_assert(!cxx_auto::detection::is_input_copy_iterator<std::vector<int>::const_iterator>);
 static_assert(cxx_auto::detection::is_input_move_iterator<std::move_iterator<std::vector<int>::iterator>>);
 static_assert(!cxx_auto::detection::is_input_move_iterator<std::vector<int>::iterator>);
+static_assert(cxx_auto::detection::has_strong_ordering<int>);
+static_assert(!cxx_auto::detection::has_strong_ordering<WeaklyOrdered>);
+static_assert(!cxx_auto::detection::has_strong_ordering<double>);
+static_assert(!cxx_auto::rust_should_impl_eq<double>(), "a partial order does not claim Eq");
+static_assert(!cxx_auto::rust_should_impl_ord<WeaklyOrdered>(), "a weak order does not claim Ord");
+static_assert(cxx_auto::rust_should_impl_partial_ord<WeaklyOrdered>(), "any <=> yields PartialOrd");
+static_assert(cxx_auto::rust_should_impl_partial_eq<LegacyPartial>());
+static_assert(!cxx_auto::rust_should_impl_eq<LegacyPartial>(), "== alone does not claim Eq");
+static_assert(!cxx_auto::rust_should_impl_send<ConstEqual>() && !cxx_auto::rust_should_impl_sync<ConstEqual>());
 } // namespace
 
 namespace fixture {
@@ -98,9 +107,47 @@ struct Value
 };
 } // namespace fixture
 
+// Opt-ins declared beside the type, before the export reads them.
+template<>
+inline constexpr bool cxx_auto::rust_send<fixture::Value> = true;
+template<>
+inline constexpr bool cxx_auto::rust_eq<fixture::Value> = true;
+
 namespace fixture::proxy {
 CXX_AUTO_PRELUDE(Value, ::fixture::Value)
 } // namespace fixture::proxy
+
+CXX_AUTO_EXPORT(
+  value,
+  fixture::proxy,
+  .rust_path = "fixture::value",
+  .rust_name = "Value",
+  .rust_lifetimes = "'a",
+  .cxx_name = "Value",
+  .cxx_namespace = "fixture",
+  .cxx_proxy_include = "fixture.hxx"
+)
+
+namespace {
+constexpr auto
+has_bit(std::uint64_t flags, unsigned bit) -> bool
+{
+  return ((flags >> bit) & 1U) != 0;
+}
+
+constexpr std::string_view value_spec{ "fixture::value\0Value\0'a\0Value\0fixture\0fixture::proxy\0fixture.hxx\0", 65 };
+static_assert(cxx_auto_type_value.magic == cxx_auto::record_magic);
+static_assert(cxx_auto_type_value.version == cxx_auto::record_version);
+static_assert(cxx_auto_type_value.abi_size == sizeof(fixture::Value));
+static_assert(cxx_auto_type_value.abi_align == alignof(fixture::Value));
+static_assert(cxx_auto_type_value.spec_len == value_spec.size());
+static_assert(std::string_view{ cxx_auto_type_value.spec.data(), cxx_auto_type_value.spec.size() } == value_spec);
+static_assert(has_bit(cxx_auto_type_value.flags, cxx_auto::record_bit::send), "the rust_send specialization is read");
+static_assert(!has_bit(cxx_auto_type_value.flags, cxx_auto::record_bit::sync));
+static_assert(has_bit(cxx_auto_type_value.flags, cxx_auto::record_bit::eq), "the rust_eq specialization is read");
+static_assert(has_bit(cxx_auto_type_value.flags, cxx_auto::record_bit::partial_eq));
+static_assert(!has_bit(cxx_auto_type_value.flags, cxx_auto::record_bit::ord));
+} // namespace
 
 int
 main()
@@ -134,10 +181,7 @@ main()
 
   const fixture::Value value{ 3 };
   const fixture::Value other{ 4 };
-  if (
-    fixture::proxy::cxx_abi_size() != sizeof(fixture::Value) || !fixture::proxy::cxx_operator_equal(value, value) ||
-    fixture::proxy::cxx_operator_equal(value, other)
-  ) {
+  if (!fixture::proxy::cxx_operator_equal(value, value) || fixture::proxy::cxx_operator_equal(value, other)) {
     return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;
