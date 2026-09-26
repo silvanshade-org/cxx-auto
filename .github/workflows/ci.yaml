@@ -86,7 +86,7 @@ jobs:
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: git diff --name-only --no-renames "$BASE_SHA" HEAD | jq -R -s -r 'split("\n") | any(.[]; test("^(src/|tests/|cxx/|\\.github/|\\.config/|Cargo\\.|build\\.rs$|CMakeLists\\.txt$|mise\\.|rust-toolchain\\.toml$)")) | "rust=\(.)"' >> "$GITHUB_OUTPUT"
+        run: git diff --name-only --no-renames "$BASE_SHA" HEAD | jq -R -s -r 'split("\n") | any(.[]; test("^(src/|crates/|tests/|cxx/|\\.github/|\\.config/|Cargo\\.|build\\.rs$|CMakeLists\\.txt$|mise\\.|rust-toolchain\\.toml$)")) | "rust=\(.)"' >> "$GITHUB_OUTPUT"
 
   rust-test:
     needs: [image-ref, changes]

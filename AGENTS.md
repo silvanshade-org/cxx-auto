@@ -17,11 +17,11 @@ This repository is public. Read this file, then `docs/agents/baseline.md`, then 
 
 | Shared site | Binding here | Reversal |
 | ----------- | ------------ | -------- |
-| Rust Shape: crate names, categories, and data path | Root package is `cxx-auto`. Its data path is C++ capability probe → generated Rust artifact → C++ bridge; a category prefix adds no distinction to this package. | Another product crate shares a category. |
+| Rust Shape: crate names, categories, and data path | Product package is `cxx-auto`; private release tooling is `crates/changelog` (`cxx-auto-changelog`). The product data path is C++ capability probe → generated Rust artifact → C++ bridge; a category prefix adds no distinction to either package. | Another crate in either category needs a distinct axis. |
 | Rust Correctness: checker and machine | Trait detection in `cxx/include/cxx-auto.hxx` and artifact emission in `src/cxx_auto_artifact_info.rs` are the correctness engines. | A separate engine owns either invariant. |
 | Rust Representation: `Maybe<T, R>` | Build the type in this workspace at its first reasoned absence; change existing exported signatures and callers together. | A shared crate supplies the type. |
 | Rust Enforcement and Verification | `Cargo.toml` owns the lint wall; `mise run check` runs local gates. Dylint-library and external-policy commands in the shared page describe producer and consumer roles, not commands in this workspace. | This workspace adopts that policy. |
-| Source workflow: project changelog | `src/bin/changelog.rs` renders root `CHANGELOG.md` through `mise run changelog:render` and `treefmt:check`; release tags and a current pull request determine its output. | Changelog ownership moves to a workflow crate. |
+| Source workflow: project changelog | Private workspace crate `crates/changelog` renders root `CHANGELOG.md` through `mise run changelog:render` and `treefmt:check`; release tags and a current pull request determine its output. | Changelog rendering leaves this workspace. |
 | Source workflow: publication and index | Root library publishes from this workspace. `mise.toml` pins Codegraph; `mise exec -- codegraph init` indexes each worktree after its source exists. | Publication or indexing workflow changes. |
 | Local CI: jobs, image, and platform lanes | `.github/workflows/ci.yaml` owns Rust, C++26, format, and workflow checks; `.github/workflows/ci-image.yaml` builds the shared container image. Empty `CXX_AUTO_CI_IMAGE` selects bootstrap bare runners; GCC 16 and macOS retain their own lanes. | A measured image rollback or platform change. |
 

@@ -12,7 +12,9 @@ categories = ["development-tools::ffi"]
 links = "cxx-auto"
 
 [workspace]
-members = ["."]
+resolver = "3"
+members = [".", "crates/changelog"]
+default-members = ["."]
 
 [workspace.lints.clippy]
 # all = { correctness, suspicious, style, complexity, perf }

@@ -18,4 +18,4 @@ clang-tidy --quiet cxx/tests/probes.cxx cxx/lib/cmake.cxx -- -std=c++26 -resourc
 
 ["changelog:render"]
 description = "Render release history using the current PR title and Git tags"
-run = "cargo run --quiet --bin changelog"
+run = "cargo run --quiet -p cxx-auto-changelog"

@@ -13,6 +13,22 @@ mod tests
     /// Failure propagated from a real Git command or the release-note renderer.
     type Failure = Box<dyn core::error::Error + Send + Sync>;
 
+    /// Arguments of an isolated fixture Git process.
+    #[repr(transparent)]
+    #[derive(Debug, Clone, Copy)]
+    struct GitArgs<'command>(&'command [&'command str]);
+
+    /// The only event histories exercised by the renderer fixture.
+    #[derive(Clone, Copy)]
+    enum Event
+    {
+        /// Render the proposed squash commit instead of transient review
+        /// commits.
+        PullRequest,
+        /// Render the landed Git commits directly.
+        Push,
+    }
+
     /// Run a Git fixture operation and surface its exact failure.
     ///
     /// # Specification
@@ -31,10 +47,14 @@ mod tests
     /// - witness: `tests::open_review_matches_landed_squash_without_transient_commits`
     fn git(
         repo: &Path,
-        args: &[&str],
+        args: GitArgs<'_>,
     ) -> Result<String, Failure>
     {
-        let result = Command::new("git").args(args).current_dir(repo).output()?;
+        // Command::args needs the raw slice; no trait boundary accepts GitArgs.
+        let result = Command::new("git")
+            .args(args.0)
+            .current_dir(repo)
+            .output()?;
         if !result.status.success() {
             return Err(format!(
                 "git {args:?} failed ({}): {}",
@@ -63,12 +83,19 @@ mod tests
     /// - witness: `tests::open_review_matches_landed_squash_without_transient_commits`
     fn render(
         repo: &Path,
-        event: &str,
+        event: Event,
     ) -> Result<String, Failure>
     {
-        let result = Command::new(env!("CARGO_BIN_EXE_changelog"))
+        let result = Command::new(env!("CARGO_BIN_EXE_cxx-auto-changelog"))
             .current_dir(repo)
-            .env("GITHUB_EVENT_NAME", event)
+            // Actions uses string event names; no trait accepts this enum.
+            .env(
+                "GITHUB_EVENT_NAME",
+                match event {
+                    | Event::PullRequest => "pull_request",
+                    | Event::Push => "push",
+                },
+            )
             .env("GITHUB_EVENT_PATH", repo.join("event.json"))
             .output()?;
         if !result.status.success() {
@@ -89,32 +116,40 @@ mod tests
         let repo =
             std::env::temp_dir().join(format!("cxx-auto-changelog-{}-{nonce}", std::process::id()));
         fs::create_dir_all(&repo)?;
-        fs::write(repo.join("cliff.toml"), include_str!("../cliff.toml"))?;
-        git(&repo, &["init", "-q", "-b", "main"])?;
-        git(&repo, &["config", "user.name", "Release fixture"])?;
-        git(&repo, &["config", "user.email", "fixture@example.test"])?;
+        fs::write(repo.join("cliff.toml"), include_str!("../../../cliff.toml"))?;
+        git(&repo, GitArgs(&["init", "-q", "-b", "main"]))?;
+        git(&repo, GitArgs(&["config", "user.name", "Release fixture"]))?;
+        git(
+            &repo,
+            GitArgs(&["config", "user.email", "fixture@example.test"]),
+        )?;
 
         fs::write(repo.join("README.md"), "initial")?;
-        git(&repo, &["add", "README.md"])?;
-        git(&repo, &["commit", "-qm", "Initial import"])?;
-        git(&repo, &["tag", "v0.0.2"])?;
+        git(&repo, GitArgs(&["add", "README.md"]))?;
+        git(&repo, GitArgs(&["commit", "-qm", "Initial import"]))?;
+        git(&repo, GitArgs(&["tag", "v0.0.2"]))?;
         fs::write(repo.join("README.md"), "release")?;
-        git(&repo, &["add", "README.md"])?;
-        git(&repo, &["commit", "-qm", "feat(api): Landed release"])?;
-        git(&repo, &["tag", "v0.0.3"])?;
+        git(&repo, GitArgs(&["add", "README.md"]))?;
+        git(
+            &repo,
+            GitArgs(&["commit", "-qm", "feat(api): Landed release"]),
+        )?;
+        git(&repo, GitArgs(&["tag", "v0.0.3"]))?;
         fs::write(repo.join("README.md"), "landed")?;
-        git(&repo, &["add", "README.md"])?;
-        git(&repo, &["commit", "-qm", "fix(api): Actual main change"])?;
-        let base = git(&repo, &["rev-parse", "HEAD"])?;
-        git(&repo, &["switch", "-qc", "review"])?;
+        git(&repo, GitArgs(&["add", "README.md"]))?;
+        git(
+            &repo,
+            GitArgs(&["commit", "-qm", "fix(api): Actual main change"]),
+        )?;
+        let base = git(&repo, GitArgs(&["rev-parse", "HEAD"]))?;
+        git(&repo, GitArgs(&["switch", "-qc", "review"]))?;
         fs::write(repo.join("README.md"), "transient")?;
-        git(&repo, &["add", "README.md"])?;
-        git(&repo, &[
-            "commit",
-            "-qm",
-            "feat(api): Should not survive squash",
-        ])?;
-        let review_head = git(&repo, &["rev-parse", "HEAD"])?;
+        git(&repo, GitArgs(&["add", "README.md"]))?;
+        git(
+            &repo,
+            GitArgs(&["commit", "-qm", "feat(api): Should not survive squash"]),
+        )?;
+        let review_head = git(&repo, GitArgs(&["rev-parse", "HEAD"]))?;
         fs::write(
             repo.join("event.json"),
             format!(
@@ -123,7 +158,7 @@ mod tests
             ),
         )?;
 
-        let review = render(&repo, "pull_request")?;
+        let review = render(&repo, Event::PullRequest)?;
         assert!(review.contains("## Unreleased\n"));
         assert!(review.contains("### Unreleased Features\n"));
         assert!(review.contains("- _(api)_ Reviewed capability (#19)\n"));
@@ -136,26 +171,32 @@ mod tests
         let changelog = repo.join("CHANGELOG.md");
         let file = fs::File::options().write(true).open(&changelog)?;
         file.set_times(fs::FileTimes::new().set_modified(UNIX_EPOCH))?;
-        render(&repo, "pull_request")?;
+        render(&repo, Event::PullRequest)?;
         assert_eq!(fs::metadata(&changelog)?.modified()?, UNIX_EPOCH);
-        let no_review = Command::new(env!("CARGO_BIN_EXE_changelog"))
+        let fake_bin = repo.join("fake-bin");
+        fs::create_dir_all(&fake_bin)?;
+        let gh = fake_bin.join("gh");
+        fs::write(&gh, "#!/bin/sh\nexit 1\n")?;
+        fs::set_permissions(&gh, fs::Permissions::from_mode(0o755))?;
+        let fixture_path = format!("{}:{}", fake_bin.display(), std::env::var("PATH")?);
+        let no_review = Command::new(env!("CARGO_BIN_EXE_cxx-auto-changelog"))
             .current_dir(&repo)
             .env_remove("GITHUB_EVENT_NAME")
             .env_remove("GITHUB_EVENT_PATH")
             .env_remove("GH_REPO")
+            .env("PATH", &fixture_path)
             .output()?;
         assert!(!no_review.status.success());
         assert!(String::from_utf8_lossy(&no_review.stderr).contains("gh failed"));
 
-        git(&repo, &["switch", "-q", "main"])?;
+        git(&repo, GitArgs(&["switch", "-q", "main"]))?;
         fs::write(repo.join("README.md"), "merged")?;
-        git(&repo, &["add", "README.md"])?;
-        git(&repo, &[
-            "commit",
-            "-qm",
-            "feat(api): Reviewed capability (#19)",
-        ])?;
-        let landed = render(&repo, "push")?;
+        git(&repo, GitArgs(&["add", "README.md"]))?;
+        git(
+            &repo,
+            GitArgs(&["commit", "-qm", "feat(api): Reviewed capability (#19)"]),
+        )?;
+        let landed = render(&repo, Event::Push)?;
         assert_eq!(
             review, landed,
             "review output must match the squash history"
@@ -164,7 +205,7 @@ mod tests
         let hidden = repo.join("cliff.off");
         fs::rename(&config, &hidden)?;
         fs::write(&config, "[changelog\n")?;
-        let no_config = Command::new(env!("CARGO_BIN_EXE_changelog"))
+        let no_config = Command::new(env!("CARGO_BIN_EXE_cxx-auto-changelog"))
             .current_dir(&repo)
             .env("GITHUB_EVENT_NAME", "push")
             .output()?;
@@ -180,7 +221,7 @@ mod tests
                 review_head.trim()
             ),
         )?;
-        let stale = Command::new(env!("CARGO_BIN_EXE_changelog"))
+        let stale = Command::new(env!("CARGO_BIN_EXE_cxx-auto-changelog"))
             .current_dir(&repo)
             .env("GITHUB_EVENT_NAME", "pull_request")
             .env("GITHUB_EVENT_PATH", repo.join("event.json"))
@@ -196,18 +237,21 @@ mod tests
         );
         assert_eq!(fs::read_to_string(repo.join("CHANGELOG.md"))?, landed);
 
-        git(&repo, &["remote", "add", "origin", &repo.to_string_lossy()])?;
-        git(&repo, &["switch", "-qc", "later-review"])?;
+        git(
+            &repo,
+            GitArgs(&["remote", "add", "origin", &repo.to_string_lossy()]),
+        )?;
+        git(&repo, GitArgs(&["switch", "-qc", "later-review"]))?;
         fs::write(repo.join("README.md"), "later transient")?;
-        git(&repo, &["add", "README.md"])?;
-        git(&repo, &[
-            "commit",
-            "-qm",
-            "feat(api): Should not survive later squash",
-        ])?;
-        let fake_bin = repo.join("fake-bin");
-        fs::create_dir_all(&fake_bin)?;
-        let gh = fake_bin.join("gh");
+        git(&repo, GitArgs(&["add", "README.md"]))?;
+        git(
+            &repo,
+            GitArgs(&[
+                "commit",
+                "-qm",
+                "feat(api): Should not survive later squash",
+            ]),
+        )?;
         fs::write(
             &gh,
             format!(
@@ -216,15 +260,12 @@ mod tests
             ),
         )?;
         fs::set_permissions(&gh, fs::Permissions::from_mode(0o755))?;
-        let local = Command::new(env!("CARGO_BIN_EXE_changelog"))
+        let local = Command::new(env!("CARGO_BIN_EXE_cxx-auto-changelog"))
             .current_dir(&repo)
             .env_remove("GITHUB_EVENT_NAME")
             .env_remove("GITHUB_EVENT_PATH")
             .env_remove("GH_REPO")
-            .env(
-                "PATH",
-                format!("{}:{}", fake_bin.display(), std::env::var("PATH")?),
-            )
+            .env("PATH", &fixture_path)
             .output()?;
         assert!(
             local.status.success(),

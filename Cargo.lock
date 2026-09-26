@@ -104,6 +104,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cxx-auto-changelog"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cxx-build"
 version = "1.0.202"
 source = "registry+https://github.com/rust-lang/crates.io-index"
