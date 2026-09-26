@@ -11,6 +11,13 @@ on:
   # Stacked reviews target their parent branch, not main.
   pull_request: {}
   merge_group:
+  # Preview a published image before the owner activates the repository switch.
+  workflow_dispatch:
+    inputs:
+      ci_image:
+        description: Published pinned GHCR image for a one-run pull check
+        required: false
+        type: string
 
 env:
   CARGO_INCREMENTAL: 0
@@ -65,13 +72,13 @@ jobs:
       - id: ref
         name: relay optional prebuilt image to container jobs
         env:
-          CXX_AUTO_CI_IMAGE: ${{ vars.CXX_AUTO_CI_IMAGE }}
+          CXX_AUTO_CI_IMAGE: ${{ inputs.ci_image || vars.CXX_AUTO_CI_IMAGE }}
         run: echo "image=$CXX_AUTO_CI_IMAGE" >> "$GITHUB_OUTPUT"
 
   changes:
     runs-on: *linux
     outputs:
-      rust: ${{ github.event_name == 'merge_group' || steps.filter.outcome != 'success' || steps.filter.outputs.rust == 'true' }}
+      rust: ${{ github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || steps.filter.outcome != 'success' || steps.filter.outputs.rust == 'true' }}
     steps:
       - &checkout-history
         name: checkout full history
@@ -80,7 +87,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - id: filter
-        if: github.event_name != 'merge_group'
+        if: github.event_name != 'merge_group' && github.event_name != 'workflow_dispatch'
         name: retain Rust and C++ gates for source or workflow changes
         continue-on-error: true
         shell: bash
