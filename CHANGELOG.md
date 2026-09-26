@@ -17,6 +17,10 @@ All notable changes to cxx-auto are documented here.
 - _(repo)_ Generate release changelog (#9)
 - _(repo)_ Pin C++ formatting and review tooling (#11)
 
+### Unreleased Maintenance
+
+- _(changelog)_ Extract renderer into workspace tooling crate (#12)
+
 ### Unreleased Legacy
 
 - Adjust clang-tidy settings
