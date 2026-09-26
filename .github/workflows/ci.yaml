@@ -216,6 +216,10 @@ jobs:
       CXX: clang++-22
     steps:
       - *checkout-history
+      # The runner owns the checkout, not the container; checkout only trusts
+      # the workspace for its own step. Changelog rendering reads git history.
+      - name: trust the workspace for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - *setup-cpp
       - *setup-rust
       - *setup-mise
