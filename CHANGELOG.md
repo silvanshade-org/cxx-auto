@@ -12,10 +12,12 @@ All notable changes to cxx-auto are documented here.
 
 - _(ci)_ Preserve source gate path filter
 - _(ci)_ Keep GCC and macOS tools pinned
+- _(build)_ Select pinned Rust through mise backend
 
 ### Unreleased Documentation
 
 - _(repo)_ Bind existing xtask as tooling
+- _(docs)_ Bind guidance to available PR5 tools
 
 ### Unreleased Build
 
