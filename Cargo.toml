@@ -183,15 +183,13 @@ private_intra_doc_links = "allow"
 bytemuck = { version = "1.13", optional = true }
 cxx = { version = "1.0", features = ["c++20"] }
 cxx-build = { version = "1.0", features = ["parallel"] }
-indexmap = { version = "2.0", features = ["serde"] }
 libc = "0.2"
+object = { version = "0.40", default-features = false, features = ["coff", "elf", "macho", "read_core", "std"] }
 proc-macro2 = "1.0"
 quote = "1.0"
 rust-format = { version = "0.3", features = ["token_stream"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", features = ["preserve_order"] }
 syn = { version = "3.0", features = ["full"] }
-walkdir = "2.3"
 
 [dev-dependencies]
 libloading = { version = "0.9", default-features = false, features = ["std"] }

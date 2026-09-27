@@ -16,65 +16,22 @@ mod tests
         let root =
             std::env::temp_dir().join(format!("cxx-auto-binding-{}-{nonce}", std::process::id()));
         let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/dynamic");
-        let probe = root.join("probe");
         let binding = root.join("binding");
         let target_dir = root.join("target");
-        for directory in [
-            probe.join("cfg/auto"),
-            probe.join("include"),
-            probe.join("src"),
-            binding.join("include"),
-            binding.join("src"),
-        ] {
+        for directory in [binding.join("include"), binding.join("src")] {
             fs::create_dir_all(directory)?;
         }
         for (source, destination) in [
-            ("number.json", probe.join("cfg/auto/number.json")),
-            ("number.hxx", probe.join("include/number.hxx")),
-            ("probe.hxx", probe.join("include/probe.hxx")),
-            ("build.rs", probe.join("build.rs")),
-            ("probe-main.rs", probe.join("src/main.rs")),
             ("number.hxx", binding.join("include/number.hxx")),
-            ("probe.hxx", binding.join("include/probe.hxx")),
+            ("proxy.hxx", binding.join("include/proxy.hxx")),
+            ("export.cxx", binding.join("src/export.cxx")),
             ("lib.rs", binding.join("src/lib.rs")),
-            ("binding-build.rs", binding.join("build.rs")),
+            ("build.rs", binding.join("build.rs")),
         ] {
             fs::copy(fixture.join(source), destination)?;
         }
 
         let project = env!("CARGO_MANIFEST_DIR");
-        let probe_manifest = format!(
-            r#"[package]
-name = "dynamic-binding-probe"
-version = "0.0.0"
-edition = "2024"
-build = "build.rs"
-
-[dependencies]
-cxx = {{ version = "1.0", features = ["c++20"] }}
-cxx-auto = {{ path = "{project}" }}
-
-[build-dependencies]
-cxx-auto = {{ path = "{project}" }}
-cxx-build = "1.0"
-"#
-        );
-        fs::write(probe.join("Cargo.toml"), probe_manifest)?;
-        let output = Command::new("cargo")
-            .args(["run", "--quiet", "--manifest-path"])
-            .arg(probe.join("Cargo.toml"))
-            .arg("--")
-            .arg(&binding)
-            .env("CARGO_TARGET_DIR", &target_dir)
-            .output()?;
-        assert!(
-            output.status.success(),
-            "C++ capability probe failed in {}:\n{}\n{}",
-            probe.display(),
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
-        );
-
         let binding_manifest = format!(
             r#"[package]
 name = "dynamic-binding-fixture"
@@ -91,6 +48,7 @@ cxx-auto = {{ path = "{project}" }}
 moveref = {{ version = "1.0", default-features = false }}
 
 [build-dependencies]
+cxx-auto = {{ path = "{project}" }}
 cxx-build = "1.0"
 "#
         );

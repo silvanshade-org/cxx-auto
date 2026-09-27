@@ -1,34 +1,52 @@
+use std::path::Path;
 use std::path::PathBuf;
 
-/// Generate the fixture modules and compile their C++26 CXX bridges.
+/// Compile the fixture's type record, generate its binding, and compile the
+/// generated CXX bridge, all in one build script.
 ///
 /// # Specification
-/// - provides: a native archive implementing the value constructor, capability
-///   probes, and generated comparison methods.
-/// - fails: reports generation, compilation, or environment errors.
+/// - provides: a C++26 archive with the generated comparison methods and the
+///   fixture constructor, and the generated modules under `OUT_DIR`.
+/// - fails: reports a C++ compiler, generation, or environment error.
 /// - panics: none.
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
-    let project =
-        PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").ok_or("missing manifest directory")?);
     let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").ok_or("missing output directory")?);
-    cxx_auto::process_artifacts(&out_dir, &project.join("cfg/auto"))?;
-
-    let probe = out_dir.join("src/auto/number.rs");
     let compiler = std::env::var_os("CXX").unwrap_or_else(|| "clang++".into());
-    cxx_build::bridge(probe)
-        .include(project.join("include"))
+    let flags = [
+        "-std=c++2c",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+    ];
+
+    // An empty bridge set configures the include paths of cxx and cxx-auto.
+    let mut records = cxx_build::bridges(Vec::<PathBuf>::new());
+    records
+        .include("include")
         .compiler(&compiler)
-        .flag("-std=c++2c")
-        .flag("-fno-exceptions")
-        .flag("-fno-rtti")
-        .flag("-Wall")
-        .flag("-Wextra")
-        .flag("-Werror")
-        .try_compile("dynamic_binding_fixture")?;
+        .file("src/export.cxx");
+    for flag in flags {
+        records.flag(flag);
+    }
+    let objects = records.try_compile_intermediates()?;
+    let generated = cxx_auto::generate(&objects, &out_dir)?;
+
+    let bridges = generated
+        .iter()
+        .map(PathBuf::as_path)
+        .chain([Path::new("src/lib.rs")]);
+    let mut build = cxx_build::bridges(bridges);
+    build.include("include").compiler(&compiler);
+    for flag in flags {
+        build.flag(flag);
+    }
+    build.try_compile("dynamic_binding_fixture")?;
+
     println!("cargo:rerun-if-env-changed=CXX");
-    println!("cargo:rerun-if-changed=cfg/auto/number.json");
-    println!("cargo:rerun-if-changed=include/number.hxx");
-    println!("cargo:rerun-if-changed=include/probe.hxx");
+    println!("cargo:rerun-if-changed=src");
+    println!("cargo:rerun-if-changed=include");
     Ok(())
 }
