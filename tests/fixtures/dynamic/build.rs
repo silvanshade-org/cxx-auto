@@ -13,7 +13,9 @@ use std::path::PathBuf;
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
 {
     let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").ok_or("missing output directory")?);
-    let compiler = std::env::var_os("CXX").unwrap_or_else(|| "clang++".into());
+    // cc reads CXX itself, including a leading wrapper such as ccache; Clang is
+    // only the fallback when CXX is unset.
+    let fallback = std::env::var_os("CXX").is_none().then_some("clang++");
     let flags = [
         "-std=c++2c",
         "-fno-exceptions",
@@ -25,7 +27,10 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
 
     // An empty bridge set configures the include paths of cxx and cxx-auto.
     let mut base = cxx_build::bridges(Vec::<PathBuf>::new());
-    base.include("include").compiler(&compiler);
+    base.include("include");
+    if let Some(compiler) = fallback {
+        base.compiler(compiler);
+    }
     for flag in flags {
         base.flag(flag);
     }
@@ -43,7 +48,10 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
         .map(PathBuf::as_path)
         .chain([Path::new("src/lib.rs")]);
     let mut build = cxx_build::bridges(bridges);
-    build.include("include").compiler(&compiler);
+    build.include("include");
+    if let Some(compiler) = fallback {
+        build.compiler(compiler);
+    }
     for flag in flags {
         build.flag(flag);
     }
