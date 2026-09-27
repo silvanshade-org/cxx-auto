@@ -1,6 +1,6 @@
 # cxx-auto
 
-Generate Rust [CXX](https://cxx.rs/) bindings from C++ layout and trait capabilities that the C++ compiler records at compile time. The C++ library is the named module `cxx_auto`, built as C++26 with exceptions disabled; its macros live in `cxx-auto.hxx`, which imports it. C++ functions used across the bridge must be `noexcept`. The `cxx` crate's `c++20` feature enables its newest available bridge mode, while the compiler uses `-std=c++2c`. Clang and GCC are supported.
+Generate Rust [CXX](https://cxx.rs/) bindings from C++ layout and trait capabilities that the C++ compiler records at compile time. The C++ library is the named module `cxx_auto`, built as C++26; its macros live in `cxx-auto.hxx`, which imports it. The `cxx` crate's `c++20` feature enables its newest available bridge mode, while the compiler uses `-std=c++2c`. Clang and GCC are supported, and generated code builds on stable Rust.
 
 ## Generate a binding
 
@@ -28,10 +28,29 @@ Layout, construction, destruction, copying and moving follow the C++ type traits
 | `Eq`, `Ord` | `operator<=>` yields `std::strong_ordering`, or the type specializes `cxx_auto::rust_eq` / `cxx_auto::rust_ord` |
 | `Hash` | `std::hash` is enabled for the type |
 | `Send`, `Sync` | the type specializes `cxx_auto::rust_send` / `cxx_auto::rust_sync` to `true` |
+| `Unpin` | the type is trivially move-constructible and trivially destructible, or specializes `cxx_auto::rust_relocatable` to `true` |
 
-Declare each specialization beside the type, in a header the export source includes before invoking `CXX_AUTO_EXPORT`. A specialization declared after that point is ill-formed and may be silently ignored.
+Declare each specialization beside the type, in a header the export source includes before invoking `CXX_AUTO_EXPORT`. A specialization declared after that point is ill-formed and may be silently ignored. Specialize `rust_relocatable` only for a type that holds no pointer into itself and that nothing else tracks by address: Rust then moves it by copying its bytes.
 
-The [dynamic binding fixture](tests/fixtures/dynamic/) is one crate with a C++ `Number` implementation. Its [integration test](tests/dynamic_binding.rs) compiles the crate as a shared library, loads it through `libloading`, and calls the generated equality and ordering implementations across equal, reversed, and integer-boundary inputs.
+### Constructing C++ objects
+
+A C++ object that isn't `Unpin` must never move bytewise, so it's built in the place that owns it. Each generated type has an inherent method for each special member C++ provides:
+
+| Method | C++ operation |
+| ------ | ------------- |
+| `default_new() -> impl PinInit<Self, E>` | default constructor |
+| `copy_from(&Self) -> impl PinInit<Self, E>` | copy constructor |
+| `move_from(Pin<&mut Self>) -> impl PinInit<Self, E>` | move constructor; the source stays, moved-from, with its owner |
+| `copy_assign(self: Pin<&mut Self>, &Self)` | copy assignment |
+| `move_assign(self: Pin<&mut Self>, Pin<&mut Self>)` | move assignment |
+
+The two assignments are generated only for a type declared `final` or one that specializes `cxx_auto::rust_assignable` to `true`. Safe Rust can reach a `Pin<&mut Base>` for the base subobject of a more-derived object, and assigning through it would rewrite the base's state beneath the derived class's invariants. Specialize `rust_assignable` only for a type no class derives from, or whose derived classes keep no invariant over its state.
+
+An operation C++ declares `noexcept` is infallible: its initializer has error `Infallible`, and its assignment returns `()`. Any other operation returns the exception its shim caught as `cxx_auto::init::CxxException`, from the initializer or as the assignment's `Result`. Catching needs exceptions enabled in the translation unit that compiles the generated bridge; without them, a throw terminates the process at the shim.
+
+Run an initializer in an owner from `cxx_auto::init`: `Box::pin_init`, `Rc::pin_init` or `Arc::pin_init` (and their `try_` forms, through the `InPlaceInit` trait), or a stack slot with `cxx_auto::stack_pin_init!(let x = init)` / `cxx_auto::stack_try_pin_init!(let x = init)`. The owner destroys the object when it ends, as for any Rust value. A failed initializer leaves nothing constructed.
+
+The [dynamic binding fixture](tests/fixtures/dynamic/) is one crate with three C++ types: a trivially movable `Number`, a final `Tracked` object that aborts if it is ever found away from the address it was built at, and a `Handle` declared relocatable. Its [integration test](tests/dynamic_binding.rs) compiles the crate as a shared library, loads it through `libloading`, calls the generated equality and ordering across equal, reversed, and integer-boundary inputs, and then constructs, copies, moves, assigns and destroys `Tracked` and `Handle` objects in heap and stack places, including constructors and assignments that throw.
 
 ## Verify
 

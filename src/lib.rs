@@ -35,6 +35,8 @@ mod r#gen
 /// Generate the binding modules for a set of compiled objects.
 #[cfg(feature = "std")]
 mod generate;
+/// Build C++ objects in place: initializers, owners, and stack slots.
+pub mod init;
 /// Compile C++ modules and their importers in scanned dependency order.
 #[cfg(feature = "std")]
 mod modules;
