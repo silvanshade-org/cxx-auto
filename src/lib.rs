@@ -35,7 +35,7 @@ mod r#gen
 /// Generate the binding modules for a set of compiled objects.
 #[cfg(feature = "std")]
 mod generate;
-/// Compile C++ module interface units in an explicit order.
+/// Compile C++ modules and their importers in scanned dependency order.
 #[cfg(feature = "std")]
 mod modules;
 /// Decode the type records compiled into object files.
@@ -46,8 +46,6 @@ mod record;
 pub use crate::error::*;
 #[cfg(feature = "std")]
 pub use crate::generate::generate;
-#[cfg(feature = "std")]
-pub use crate::modules::ModuleUnit;
 #[cfg(feature = "std")]
 pub use crate::modules::Modules;
 #[cfg(feature = "std")]
