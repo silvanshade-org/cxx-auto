@@ -25,7 +25,7 @@ env:
   CCACHE_DEPEND: "true"
   # Local hook, index, and act tools do not belong in the hosted tool subset.
   # This list is identical to the Dockerfile's image build environment.
-  MISE_DISABLE_TOOLS: github:colbymchenry/codegraph,github:max-sixty/worktrunk,github:cli/cli,github:j178/prek,github:nektos/act,github:woodruffw/zizmor,npm:@commitlint/cli
+  MISE_DISABLE_TOOLS: github:colbymchenry/codegraph,github:max-sixty/worktrunk,github:j178/prek,github:nektos/act,github:woodruffw/zizmor,npm:@commitlint/cli
 
 permissions:
   contents: read
@@ -240,7 +240,10 @@ jobs:
     runs-on: *linux
     # Only the repository owner sets the image ref; ci-image-ref relays it unchanged.
     container: ${{ needs.ci-image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
-    permissions: *image-read-permissions
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: read
     env:
       CXX: ccache clang++-22
     steps:
@@ -257,6 +260,8 @@ jobs:
       - name: verify pinned guidance baseline
         run: mise run check:baseline-hash
       - name: verify format and size budgets
+        env:
+          GH_TOKEN: ${{ github.event_name == 'workflow_dispatch' && github.token || '' }}
         run: mise run check:format
       - name: ci pin drift check
         run: mise run check:ci-pins
