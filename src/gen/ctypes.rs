@@ -5,7 +5,7 @@
 mod ffi
 {
     extern "C++" {
-        include!("cxx-auto/cxx/include/cxx-auto.hxx");
+        include!("cxx-auto/cxx/include/cxx-auto-ctypes.hxx");
 
         #[cxx_name = "c_char"]
         type _c_char = crate::ffi::ctypes::c_char;

@@ -35,6 +35,9 @@ mod r#gen
 /// Generate the binding modules for a set of compiled objects.
 #[cfg(feature = "std")]
 mod generate;
+/// Compile C++ module interface units in an explicit order.
+#[cfg(feature = "std")]
+mod modules;
 /// Decode the type records compiled into object files.
 #[cfg(feature = "std")]
 mod record;
@@ -43,6 +46,12 @@ mod record;
 pub use crate::error::*;
 #[cfg(feature = "std")]
 pub use crate::generate::generate;
+#[cfg(feature = "std")]
+pub use crate::modules::ModuleUnit;
+#[cfg(feature = "std")]
+pub use crate::modules::Modules;
+#[cfg(feature = "std")]
+pub use crate::modules::compile_modules;
 
 /// Nominal C ABI primitive wrappers for use in CXX bindings.
 pub mod ctypes

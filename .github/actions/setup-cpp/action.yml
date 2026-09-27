@@ -14,7 +14,7 @@ runs:
       run: sudo apt-get update
     - if: ${{ inputs.install == 'true' }}
       shell: bash
-      run: sudo apt-get install -y --no-install-recommends ca-certificates curl gnupg cmake
+      run: sudo apt-get install -y --no-install-recommends ca-certificates curl gnupg cmake ninja-build
     - if: ${{ inputs.install == 'true' }}
       shell: bash
       run: curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg
@@ -26,4 +26,4 @@ runs:
       run: sudo apt-get update
     - if: ${{ inputs.install == 'true' }}
       shell: bash
-      run: sudo apt-get install -y --no-install-recommends clang-22
+      run: sudo apt-get install -y --no-install-recommends clang-22 clang-tools-22

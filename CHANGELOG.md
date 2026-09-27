@@ -8,6 +8,7 @@ All notable changes to cxx-auto are documented here.
 
 - _(cpp)_ Modernize C++26 bindings and guidance (#5)
 - _(build)_ Generate bindings in one build script from compiled type records (#15)
+- _(build)_ Build the C++ library as the cxx_auto named module (#16)
 
 ### Unreleased Bug Fixes
 
