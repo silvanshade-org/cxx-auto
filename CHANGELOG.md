@@ -10,11 +10,12 @@ All notable changes to cxx-auto are documented here.
 - _(build)_ Generate bindings in one build script from compiled type records (#15)
 - _(build)_ Build the C++ library as the cxx_auto named module
 - _(build)_ Order C++ modules by scanning them with cpp-deps
-- _(api)_ Construct C++ objects in place with owned initializers (#18)
+- _(api)_ Construct C++ objects in place with owned initializers
 
 ### Unreleased Bug Fixes
 
 - _(ci)_ Trust container checkout for changelog (#14)
+- _(build)_ Let cc read CXX, including a compiler wrapper (#19)
 
 ### Unreleased Documentation
 
