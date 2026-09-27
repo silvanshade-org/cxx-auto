@@ -74,6 +74,54 @@ struct LegacyPartial
   }
 };
 
+struct Polymorphic
+{
+  virtual ~Polymorphic() = default;
+  Polymorphic() = default;
+  Polymorphic(Polymorphic const&) = default;
+  auto operator=(Polymorphic const&) -> Polymorphic& = default;
+};
+
+struct FinalValue final
+{
+  int value = 0;
+};
+
+struct AssignableBase
+{
+  int value = 0;
+};
+
+struct OwningPointer
+{
+  int* owned = nullptr;
+  OwningPointer() = default;
+  OwningPointer(OwningPointer&& that) noexcept
+    : owned(std::exchange(that.owned, nullptr))
+  {
+  }
+  ~OwningPointer() { delete owned; }
+};
+
+struct RelocatablePointer
+{
+  int* owned = nullptr;
+  RelocatablePointer() = default;
+  RelocatablePointer(RelocatablePointer&& that) noexcept
+    : owned(std::exchange(that.owned, nullptr))
+  {
+  }
+  ~RelocatablePointer() { delete owned; }
+};
+} // namespace
+
+template<>
+inline constexpr bool cxx_auto::rust_relocatable<RelocatablePointer> = true;
+template<>
+inline constexpr bool cxx_auto::rust_assignable<AssignableBase> = true;
+
+namespace {
+
 static_assert(cxx_auto::detection::has_operator_equal<ConstEqual>);
 static_assert(!cxx_auto::detection::has_operator_equal<MutableOnly>);
 static_assert(!cxx_auto::detection::has_operator_equal<BoolProxy>);
@@ -94,6 +142,20 @@ static_assert(cxx_auto::rust_should_impl_partial_ord<WeaklyOrdered>(), "any <=> 
 static_assert(cxx_auto::rust_should_impl_partial_eq<LegacyPartial>());
 static_assert(!cxx_auto::rust_should_impl_eq<LegacyPartial>(), "== alone does not claim Eq");
 static_assert(!cxx_auto::rust_should_impl_send<ConstEqual>() && !cxx_auto::rust_should_impl_sync<ConstEqual>());
+static_assert(
+  std::is_copy_assignable_v<Polymorphic> && !cxx_auto::rust_should_impl_copy_assign<Polymorphic>(),
+  "a polymorphic type's assignment would slice a more-derived object"
+);
+static_assert(!cxx_auto::rust_should_impl_move_assign<Polymorphic>());
+static_assert(
+  std::is_copy_assignable_v<ConstEqual> && !cxx_auto::rust_should_impl_copy_assign<ConstEqual>(),
+  "a non-final type may be the base of a class with invariants over its state"
+);
+static_assert(cxx_auto::rust_should_impl_copy_assign<FinalValue>(), "nothing derives from a final class");
+static_assert(cxx_auto::rust_should_impl_move_assign<FinalValue>());
+static_assert(cxx_auto::rust_should_impl_copy_assign<AssignableBase>(), "the author's assignment opt-in claims it");
+static_assert(!cxx_auto::rust_should_impl_unpin<OwningPointer>(), "a user-provided move is not relocation");
+static_assert(cxx_auto::rust_should_impl_unpin<RelocatablePointer>(), "the author's relocation opt-in claims Unpin");
 } // namespace
 
 namespace fixture {

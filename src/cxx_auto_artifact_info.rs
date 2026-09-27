@@ -63,6 +63,12 @@ pub struct CxxAutoArtifactInfo
     pub is_rust_copy_new: bool,
     /// Whether Rust may invoke a C++ move constructor.
     pub is_rust_move_new: bool,
+    /// Whether Rust may invoke the C++ copy assignment operator.
+    pub is_rust_copy_assign: bool,
+    /// Whether Rust may invoke the C++ move assignment operator.
+    pub is_rust_move_assign: bool,
+    /// Which special member functions C++ declares unable to throw.
+    pub cxx_nothrow: CxxNothrow,
     /// Whether Rust exposes total equality.
     pub is_rust_eq: bool,
     /// Whether Rust exposes partial equality.
@@ -73,6 +79,28 @@ pub struct CxxAutoArtifactInfo
     pub is_rust_ord: bool,
     /// Whether Rust delegates hashing to C++.
     pub is_rust_hash: bool,
+}
+
+/// Which C++ special member functions cannot throw. A generated initializer or
+/// assignment is infallible when its operation cannot throw, and otherwise
+/// returns the caught exception as [`CxxException`](crate::init::CxxException).
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "Each flag is a distinct C++ `is_nothrow_*` probe for one operation"
+)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CxxNothrow
+{
+    /// Default construction.
+    pub default_new: bool,
+    /// Copy construction.
+    pub copy_new: bool,
+    /// Move construction.
+    pub move_new: bool,
+    /// Copy assignment.
+    pub copy_assign: bool,
+    /// Move assignment.
+    pub move_assign: bool,
 }
 
 #[cfg(feature = "alloc")]
@@ -119,12 +147,8 @@ impl CxxAutoArtifactInfo
         let items_impl_send_sync = emit_impls_send_sync(self, ident, generics_binder, generics);
         let item_impl_drop = emit_impl_drop(self, ident, generics_binder, generics);
         let item_impl_debug = emit_impl_debug(self, ident, generics_binder, generics);
-        let item_impl_default = emit_impl_default(self, ident, generics_binder, generics);
+        let item_impl_construction = emit_impl_construction(self, ident, generics_binder, generics);
         let item_impl_display = emit_impl_display(self, ident, generics_binder, generics);
-        let item_impl_moveit_copy_new =
-            emit_impl_moveit_copy_new(self, ident, generics_binder, generics);
-        let item_impl_moveit_move_new =
-            emit_impl_moveit_move_new(self, ident, generics_binder, generics);
         let item_impl_partial_eq = emit_impl_partial_eq(self, ident, generics_binder, generics);
         let item_impl_eq = emit_impl_eq(self, ident, generics_binder, generics);
         let item_impl_partial_ord = emit_impl_partial_ord(self, ident, generics_binder, generics);
@@ -138,9 +162,7 @@ impl CxxAutoArtifactInfo
             #item_impl_cxx_extern_type
             #(#items_impl_send_sync)*
             #item_impl_drop
-            #item_impl_default
-            #item_impl_moveit_copy_new
-            #item_impl_moveit_move_new
+            #item_impl_construction
             #item_impl_partial_eq
             #item_impl_eq
             #item_impl_partial_ord
@@ -475,35 +497,253 @@ fn emit_impl_debug(
     }
 }
 
-/// Select the C++ default constructor wrapper.
+/// Build a generated initializer or assignment body around one C++ call.
 ///
 /// # Specification
-/// - provides: a `default_new` inherent method only when `is_rust_default` is
-///   true.
+/// - provides: when `nothrow`, a call to the plain shim `plain` with `args`,
+///   evaluating to `Ok(())`; otherwise a call to the catching shim `catching`
+///   through `cxx_auto::init::cxx_try`, which supplies its `what` argument.
 /// - panics: malformed generated identifiers may be rejected by syn.
 #[cfg(feature = "alloc")]
-fn emit_impl_default(
+fn emit_cxx_call(
+    nothrow: bool,
+    plain: &str,
+    catching: &str,
+    args: &proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream
+{
+    let span = proc_macro2::Span::call_site();
+    if nothrow {
+        let plain = syn::Ident::new(plain, span);
+        quote::quote! {
+            // SAFETY: the operation cannot throw, and the arguments satisfy the
+            // shim's contract.
+            unsafe { self::ffi::#plain(#args) };
+            ::core::result::Result::Ok(())
+        }
+    }
+    else {
+        let catching = syn::Ident::new(catching, span);
+        quote::quote! {
+            ::cxx_auto::init::cxx_try(|what| {
+                // SAFETY: the shim catches every exception and reports it
+                // through `what`; the arguments satisfy its contract.
+                unsafe { self::ffi::#catching(#args, what) }
+            })
+        }
+    }
+}
+
+/// The error type of a generated operation.
+#[cfg(feature = "alloc")]
+fn emit_error_type(nothrow: bool) -> syn::Type
+{
+    if nothrow {
+        syn::parse_quote!(::core::convert::Infallible)
+    }
+    else {
+        syn::parse_quote!(::cxx_auto::init::CxxException)
+    }
+}
+
+/// Emit C++ construction and assignment as initializers and methods.
+///
+/// # Specification
+/// - provides: `default_new`, `copy_from`, and `move_from` initializers (`impl
+///   PinInit<Self, E>`) and `copy_assign` / `move_assign` methods on `Pin<&mut
+///   Self>`, each only when C++ supports the operation. An operation C++
+///   declares `noexcept` has error type `Infallible` (assignments return `()`);
+///   any other returns the caught exception as `CxxException`.
+/// - ensures: a moved-from source stays in its own place, owned and later
+///   destroyed by its owner; nothing is relocated bytewise.
+/// - panics: malformed generated identifiers may be rejected by syn.
+#[cfg(feature = "alloc")]
+fn emit_impl_construction(
     info: &CxxAutoArtifactInfo,
     ident: &syn::Ident,
     generics_binder: &syn::Generics,
     generics: &syn::Generics,
 ) -> Option<syn::ItemImpl>
 {
-    info.is_rust_default.then(|| {
+    let mut methods = emit_initializer_methods(info);
+    methods.extend(emit_assignment_methods(info));
+    (!methods.is_empty()).then(|| {
         syn::parse_quote! {
             impl #generics_binder #ident #generics {
-                #[inline]
-                pub(crate) fn default_new() -> impl ::moveref::New<Output = #ident #generics> {
-                    unsafe {
-                        ::moveref::new::by_raw(move |this| {
-                            let this = this.get_unchecked_mut().as_mut_ptr();
-                            self::ffi::cxx_default_new(this);
-                        })
-                    }
-                }
+                #(#methods)*
             }
         }
     })
+}
+
+/// Emit the generated initializers: `default_new`, `copy_from`, `move_from`.
+///
+/// # Specification
+/// - provides: one method per construction C++ supports; see
+///   [`emit_impl_construction`].
+/// - panics: malformed generated identifiers may be rejected by syn.
+#[cfg(feature = "alloc")]
+fn emit_initializer_methods(info: &CxxAutoArtifactInfo) -> alloc::vec::Vec<syn::ImplItemFn>
+{
+    let nothrow = info.cxx_nothrow;
+    let mut methods: alloc::vec::Vec<syn::ImplItemFn> = alloc::vec::Vec::new();
+    if info.is_rust_default {
+        let error = emit_error_type(nothrow.default_new);
+        let call = emit_cxx_call(
+            nothrow.default_new,
+            "cxx_default_new",
+            "cxx_try_default_new",
+            &quote::quote!(this),
+        );
+        methods.push(syn::parse_quote! {
+            /// The C++ default constructor, run in the owner's storage.
+            #[inline]
+            pub(crate) fn default_new() -> impl ::cxx_auto::init::PinInit<Self, #error> {
+                let body = move |this: *mut Self| -> ::core::result::Result<(), #error> { #call };
+                // SAFETY: the constructor either fully initializes `this` or
+                // throws, in which case C++ has destroyed anything it built.
+                unsafe { ::cxx_auto::init::pin_init_from_closure(body) }
+            }
+        });
+    }
+    if info.is_rust_copy_new {
+        let error = emit_error_type(nothrow.copy_new);
+        let call = emit_cxx_call(
+            nothrow.copy_new,
+            "cxx_copy_new",
+            "cxx_try_copy_new",
+            &quote::quote!(this, that),
+        );
+        methods.push(syn::parse_quote! {
+            /// The C++ copy constructor, run in the owner's storage.
+            #[inline]
+            pub(crate) fn copy_from(that: &Self) -> impl ::cxx_auto::init::PinInit<Self, #error> + '_ {
+                let body = move |this: *mut Self| -> ::core::result::Result<(), #error> { #call };
+                // SAFETY: as for `default_new`; `that` stays borrowed until
+                // the initializer runs.
+                unsafe { ::cxx_auto::init::pin_init_from_closure(body) }
+            }
+        });
+    }
+    if info.is_rust_move_new {
+        let error = emit_error_type(nothrow.move_new);
+        let call = emit_cxx_call(
+            nothrow.move_new,
+            "cxx_move_new",
+            "cxx_try_move_new",
+            &quote::quote!(this, that),
+        );
+        methods.push(syn::parse_quote! {
+            /// The C++ move constructor, run in the owner's storage. The
+            /// source is left moved-from in its own place, and its owner
+            /// still destroys it.
+            #[inline]
+            pub(crate) fn move_from(
+                that: ::core::pin::Pin<&mut Self>,
+            ) -> impl ::cxx_auto::init::PinInit<Self, #error> + '_ {
+                // SAFETY: C++ moves from `that` in place and never relocates it.
+                let that: *mut Self = ::core::ptr::from_mut(unsafe { ::core::pin::Pin::into_inner_unchecked(that) });
+                let body = move |this: *mut Self| -> ::core::result::Result<(), #error> { #call };
+                // SAFETY: as for `default_new`; `that` stays exclusively
+                // borrowed until the initializer runs.
+                unsafe { ::cxx_auto::init::pin_init_from_closure(body) }
+            }
+        });
+    }
+    methods
+}
+
+/// Emit the generated assignments: `copy_assign`, `move_assign`.
+///
+/// # Specification
+/// - provides: one method per assignment C++ supports; see
+///   [`emit_impl_construction`].
+/// - panics: malformed generated identifiers may be rejected by syn.
+#[cfg(feature = "alloc")]
+fn emit_assignment_methods(info: &CxxAutoArtifactInfo) -> alloc::vec::Vec<syn::ImplItemFn>
+{
+    let nothrow = info.cxx_nothrow;
+    let mut methods: alloc::vec::Vec<syn::ImplItemFn> = alloc::vec::Vec::new();
+    if info.is_rust_copy_assign {
+        let error = emit_error_type(nothrow.copy_assign);
+        let this = quote::quote!(::core::ptr::from_mut(unsafe {
+            ::core::pin::Pin::into_inner_unchecked(self)
+        }));
+        let call = emit_cxx_call(
+            nothrow.copy_assign,
+            "cxx_copy_assign",
+            "cxx_try_copy_assign",
+            &quote::quote!(this, that),
+        );
+        let (output, finish) = assignment_result(nothrow.copy_assign, &error);
+        methods.push(syn::parse_quote! {
+            /// The C++ copy assignment operator.
+            #[inline]
+            pub(crate) fn copy_assign(self: ::core::pin::Pin<&mut Self>, that: &Self) #output {
+                // SAFETY: C++ assigns in place and never relocates `self`.
+                let this: *mut Self = #this;
+                let result: ::core::result::Result<(), #error> = { #call };
+                #finish
+            }
+        });
+    }
+    if info.is_rust_move_assign {
+        let error = emit_error_type(nothrow.move_assign);
+        let this = quote::quote!(::core::ptr::from_mut(unsafe {
+            ::core::pin::Pin::into_inner_unchecked(self)
+        }));
+        let call = emit_cxx_call(
+            nothrow.move_assign,
+            "cxx_move_assign",
+            "cxx_try_move_assign",
+            &quote::quote!(this, that),
+        );
+        let (output, finish) = assignment_result(nothrow.move_assign, &error);
+        methods.push(syn::parse_quote! {
+            /// The C++ move assignment operator. The source is left
+            /// moved-from in its own place, and its owner still destroys it.
+            #[inline]
+            pub(crate) fn move_assign(
+                self: ::core::pin::Pin<&mut Self>,
+                that: ::core::pin::Pin<&mut Self>,
+            ) #output {
+                // SAFETY: C++ assigns in place and relocates neither object.
+                let this: *mut Self = #this;
+                // SAFETY: as above.
+                let that: *mut Self = ::core::ptr::from_mut(unsafe { ::core::pin::Pin::into_inner_unchecked(that) });
+                let result: ::core::result::Result<(), #error> = { #call };
+                #finish
+            }
+        });
+    }
+    methods
+}
+
+/// The return type and final expression of a generated assignment.
+///
+/// # Specification
+/// - provides: nothing and a discarded `Infallible` result when `nothrow`,
+///   otherwise `-> Result<(), error>` returning the result.
+#[cfg(feature = "alloc")]
+fn assignment_result(
+    nothrow: bool,
+    error: &syn::Type,
+) -> (proc_macro2::TokenStream, proc_macro2::TokenStream)
+{
+    if nothrow {
+        (proc_macro2::TokenStream::new(), quote::quote! {
+            match result {
+                ::core::result::Result::Ok(()) => {}
+                ::core::result::Result::Err(never) => match never {},
+            }
+        })
+    }
+    else {
+        (
+            quote::quote!(-> ::core::result::Result<(), #error>),
+            quote::quote!(result),
+        )
+    }
 }
 
 /// Select C++-backed Display formatting.
@@ -525,60 +765,6 @@ fn emit_impl_display(
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     let string = self::ffi::cxx_display(self);
                     write!(f, "{string}")
-                }
-            }
-        }
-    })
-}
-
-/// Select a C++ copy constructor implementation.
-///
-/// # Specification
-/// - provides: a `CopyNew` impl only when `is_rust_copy_new` is true.
-/// - panics: malformed generated identifiers may be rejected by syn.
-#[cfg(feature = "alloc")]
-fn emit_impl_moveit_copy_new(
-    info: &CxxAutoArtifactInfo,
-    ident: &syn::Ident,
-    generics_binder: &syn::Generics,
-    generics: &syn::Generics,
-) -> Option<syn::ItemImpl>
-{
-    info.is_rust_copy_new.then(|| syn::parse_quote! {
-            impl #generics_binder ::moveref::CopyNew for #ident #generics {
-                #[inline]
-                unsafe fn copy_new(that: &Self, this: ::core::pin::Pin<&mut ::core::mem::MaybeUninit<Self>>) {
-                    let this = this.get_unchecked_mut().as_mut_ptr();
-                    self::ffi::cxx_copy_new(this, that);
-                }
-            }
-        })
-}
-
-/// Select a C++ move constructor implementation.
-///
-/// # Specification
-/// - provides: a `MoveNew` impl only when `is_rust_move_new` is true.
-/// - panics: malformed generated identifiers may be rejected by syn.
-#[cfg(feature = "alloc")]
-fn emit_impl_moveit_move_new(
-    info: &CxxAutoArtifactInfo,
-    ident: &syn::Ident,
-    generics_binder: &syn::Generics,
-    generics: &syn::Generics,
-) -> Option<syn::ItemImpl>
-{
-    info.is_rust_move_new.then(|| {
-        syn::parse_quote! {
-            impl #generics_binder ::moveref::MoveNew for #ident #generics {
-                #[inline]
-                unsafe fn move_new(
-                    that: ::core::pin::Pin<::moveref::MoveRef<'_, Self>>,
-                    this: ::core::pin::Pin<&mut ::core::mem::MaybeUninit<Self>>,
-                ) {
-                    let this = this.get_unchecked_mut().as_mut_ptr();
-                    let that = &mut *::core::pin::Pin::into_inner_unchecked(that);
-                    self::ffi::cxx_move_new(this, that);
                 }
             }
         }
@@ -820,19 +1006,7 @@ fn emit_item_mod_cxx_bridge(
     let cxx_namespace = &info.cxx_namespace;
     let cxx_proxy_namespace = &info.cxx_proxy_namespace;
     let cxx_name = &info.cxx_name;
-    let cxx_copy_new: Option<syn::ForeignItemFn> = info.is_rust_copy_new.then(|| {
-        syn::parse_quote! {
-            unsafe fn cxx_copy_new #generics (This: *mut #ident #generics, that: &#ident #generics);
-        }
-    });
-    let cxx_move_new: Option<syn::ForeignItemFn> = info.is_rust_move_new.then(|| syn::parse_quote! {
-            unsafe fn cxx_move_new #generics (This: *mut #ident #generics, that: *mut #ident #generics);
-        });
-    let cxx_default_new: Option<syn::ForeignItemFn> = info.is_rust_default.then(|| {
-        syn::parse_quote! {
-            unsafe fn cxx_default_new #generics (This: *mut #ident #generics);
-        }
-    });
+    let construction = emit_construction_bridge_fns(info, ident, generics);
     let cxx_destruct: Option<syn::ForeignItemFn> = info.is_rust_drop.then(|| {
         syn::parse_quote! {
             unsafe fn cxx_destruct #generics (This: *mut #ident #generics);
@@ -874,9 +1048,7 @@ fn emit_item_mod_cxx_bridge(
                 #[cxx_name = #cxx_name]
                 #[allow(unused)]
                 type #ident #generics = super :: #ident #generics;
-                #cxx_copy_new
-                #cxx_move_new
-                #cxx_default_new
+                #(#construction)*
                 #cxx_destruct
                 #cxx_operator_equal
                 #cxx_operator_not_equal
@@ -888,6 +1060,79 @@ fn emit_item_mod_cxx_bridge(
         }
     }
 }
+
+/// Declare the C++ shims behind the generated initializers and assignments.
+///
+/// # Specification
+/// - provides: for each operation C++ supports, the plain `noexcept` shim when
+///   the operation cannot throw, otherwise the catching `cxx_try_` shim that
+///   reports the exception through a `String`.
+/// - panics: malformed generated identifiers may be rejected by syn.
+#[cfg(feature = "alloc")]
+fn emit_construction_bridge_fns(
+    info: &CxxAutoArtifactInfo,
+    ident: &syn::Ident,
+    generics: &syn::Generics,
+) -> alloc::vec::Vec<syn::ForeignItemFn>
+{
+    let nothrow = info.cxx_nothrow;
+    let this: syn::FnArg = syn::parse_quote!(This: *mut #ident #generics);
+    let copied: syn::FnArg = syn::parse_quote!(that: &#ident #generics);
+    let moved: syn::FnArg = syn::parse_quote!(that: *mut #ident #generics);
+    let operations = [
+        (
+            info.is_rust_default,
+            nothrow.default_new,
+            "default_new",
+            None,
+        ),
+        (
+            info.is_rust_copy_new,
+            nothrow.copy_new,
+            "copy_new",
+            Some(&copied),
+        ),
+        (
+            info.is_rust_move_new,
+            nothrow.move_new,
+            "move_new",
+            Some(&moved),
+        ),
+        (
+            info.is_rust_copy_assign,
+            nothrow.copy_assign,
+            "copy_assign",
+            Some(&copied),
+        ),
+        (
+            info.is_rust_move_assign,
+            nothrow.move_assign,
+            "move_assign",
+            Some(&moved),
+        ),
+    ];
+    let span = proc_macro2::Span::call_site();
+    operations
+        .into_iter()
+        .filter(|&(supported, ..)| supported)
+        .map(|(_, cannot_throw, operation, that)| {
+            let that = that.into_iter();
+            if cannot_throw {
+                let name = syn::Ident::new(&alloc::format!("cxx_{operation}"), span);
+                syn::parse_quote! {
+                    unsafe fn #name #generics (#this #(, #that)*);
+                }
+            }
+            else {
+                let name = syn::Ident::new(&alloc::format!("cxx_try_{operation}"), span);
+                syn::parse_quote! {
+                    unsafe fn #name #generics (#this #(, #that)*, what: &mut String) -> bool;
+                }
+            }
+        })
+        .collect()
+}
+
 /// Collect lifetime references for a generated phantom field.
 ///
 /// # Specification

@@ -23,6 +23,7 @@ mod tests
         }
         for (source, destination) in [
             ("number.hxx", binding.join("include/number.hxx")),
+            ("objects.hxx", binding.join("include/objects.hxx")),
             ("proxy.hxx", binding.join("include/proxy.hxx")),
             ("export.cxx", binding.join("src/export.cxx")),
             ("lib.rs", binding.join("src/lib.rs")),
@@ -45,7 +46,6 @@ crate-type = ["cdylib"]
 [dependencies]
 cxx = {{ version = "1.0", features = ["c++20"] }}
 cxx-auto = {{ path = "{project}" }}
-moveref = {{ version = "1.0", default-features = false }}
 
 [build-dependencies]
 cxx-auto = {{ path = "{project}" }}
@@ -89,6 +89,16 @@ cxx-build = "1.0"
             let actual = unsafe { compare(lhs, rhs) };
             assert_eq!(actual, expected, "comparing {lhs} and {rhs}");
         }
+        // SAFETY: the fixture exports exercise_objects with exactly this C ABI
+        // signature.
+        let exercise: libloading::Symbol<'_, unsafe extern "C" fn() -> i32> =
+            unsafe { library.get(b"exercise_objects")? };
+        // SAFETY: the loaded symbol has the fixture's C ABI and takes no arguments.
+        let failed_step = unsafe { exercise() };
+        assert_eq!(
+            failed_step, 0_i32,
+            "in-place construction step {failed_step} failed"
+        );
         drop(library);
         fs::remove_dir_all(root)?;
         Ok(())

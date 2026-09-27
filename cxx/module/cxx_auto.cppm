@@ -229,6 +229,62 @@ cxx_is_move_constructible() noexcept -> bool
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
 constexpr inline auto
+cxx_is_nothrow_default_constructible() noexcept -> bool
+{
+  return std::is_nothrow_default_constructible_v<T>;
+}
+
+template<typename T>
+[[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
+constexpr inline auto
+cxx_is_nothrow_copy_constructible() noexcept -> bool
+{
+  return std::is_nothrow_copy_constructible_v<T>;
+}
+
+template<typename T>
+[[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
+constexpr inline auto
+cxx_is_nothrow_move_constructible() noexcept -> bool
+{
+  return std::is_nothrow_move_constructible_v<T>;
+}
+
+template<typename T>
+[[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
+constexpr inline auto
+cxx_is_copy_assignable() noexcept -> bool
+{
+  return std::is_copy_assignable_v<T>;
+}
+
+template<typename T>
+[[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
+constexpr inline auto
+cxx_is_move_assignable() noexcept -> bool
+{
+  return std::is_move_assignable_v<T>;
+}
+
+template<typename T>
+[[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
+constexpr inline auto
+cxx_is_nothrow_copy_assignable() noexcept -> bool
+{
+  return std::is_nothrow_copy_assignable_v<T>;
+}
+
+template<typename T>
+[[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
+constexpr inline auto
+cxx_is_nothrow_move_assignable() noexcept -> bool
+{
+  return std::is_nothrow_move_assignable_v<T>;
+}
+
+template<typename T>
+[[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
+constexpr inline auto
 cxx_is_destructible() noexcept -> bool
 {
   return std::is_destructible_v<T>;
@@ -324,6 +380,20 @@ cxx_is_displayable() noexcept -> bool
 //
 // - `rust_send`, `rust_sync`: the type may cross, or be shared across,
 //   threads. C++ has no trait for either, so both default to false.
+// - `rust_relocatable`: an object may be moved to new storage by copying its
+//   bytes, with the old storage then abandoned without running its
+//   destructor. Types that are trivially move-constructible and trivially
+//   destructible already are; C++26 has no standard trait for the rest, so
+//   this defaults to false. Specialize it only for a type that holds no
+//   pointer into itself and that nothing else tracks by address, such as a
+//   class declared `[[clang::trivial_abi]]` or libc++'s `std::unique_ptr`.
+// - `rust_assignable`: assigning through a `Pin<&mut T>` preserves every
+//   invariant of whatever object that reference is part of. Safe Rust can
+//   reach a `Pin<&mut Base>` for the base subobject of a more-derived object,
+//   and assigning to it rewrites the base's state beneath the derived class's
+//   invariants, polymorphic or not. The default is `std::is_final_v<T>`, since
+//   nothing derives from a final class. Specialize it for a type no class
+//   derives from, or whose derived classes keep no invariant over its state.
 // - `rust_eq`: `==` is an equivalence relation. The default is C++'s own
 //   claim, a `<=>` yielding `std::strong_ordering`; specialize it for a type
 //   with a lawful `==` but no such `<=>`.
@@ -334,6 +404,12 @@ inline constexpr bool rust_send = false;
 
 template<typename T>
 inline constexpr bool rust_sync = false;
+
+template<typename T>
+inline constexpr bool rust_relocatable = false;
+
+template<typename T>
+inline constexpr bool rust_assignable = std::is_final_v<T>;
 
 template<typename T>
 inline constexpr bool rust_eq = detection::has_strong_ordering<T>;
@@ -354,7 +430,7 @@ template<typename T>
 constexpr inline auto
 rust_should_impl_unpin() noexcept -> bool
 {
-  return cxx_is_trivially_movable<T>();
+  return cxx_is_trivially_movable<T>() or rust_relocatable<T>;
 }
 
 template<typename T>
@@ -400,7 +476,7 @@ rust_should_impl_default() noexcept -> bool
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
 constexpr inline auto
-rust_should_impl_moveref_copy_new() noexcept -> bool
+rust_should_impl_copy_new() noexcept -> bool
 {
   return cxx_is_copy_constructible<T>();
 }
@@ -408,9 +484,27 @@ rust_should_impl_moveref_copy_new() noexcept -> bool
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
 constexpr inline auto
-rust_should_impl_moveref_move_new() noexcept -> bool
+rust_should_impl_move_new() noexcept -> bool
 {
   return cxx_is_move_constructible<T>();
+}
+
+// Assignment is offered only where `rust_assignable` holds: a `Pin<&mut T>`
+// may refer to the base subobject of a more-derived object.
+template<typename T>
+[[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
+constexpr inline auto
+rust_should_impl_copy_assign() noexcept -> bool
+{
+  return cxx_is_copy_assignable<T>() and rust_assignable<T>;
+}
+
+template<typename T>
+[[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
+constexpr inline auto
+rust_should_impl_move_assign() noexcept -> bool
+{
+  return cxx_is_move_assignable<T>() and rust_assignable<T>;
 }
 
 template<typename T>
@@ -480,7 +574,7 @@ export namespace cxx_auto {
 
 // The bytes "cxx_auto" read as a little-endian integer.
 inline constexpr std::uint64_t record_magic = 0x6f74'7561'5f78'7863ULL;
-inline constexpr std::uint32_t record_version = 1;
+inline constexpr std::uint32_t record_version = 2;
 
 // Bit positions of `TypeRecord::flags`, mirrored by `src/record.rs`.
 namespace record_bit {
@@ -501,6 +595,13 @@ inline constexpr unsigned hash = 13;
 inline constexpr unsigned debug = 14;
 inline constexpr unsigned display = 15;
 inline constexpr unsigned operator_not_equal = 16;
+inline constexpr unsigned default_new_nothrow = 17;
+inline constexpr unsigned copy_new_nothrow = 18;
+inline constexpr unsigned move_new_nothrow = 19;
+inline constexpr unsigned copy_assign = 20;
+inline constexpr unsigned move_assign = 21;
+inline constexpr unsigned copy_assign_nothrow = 22;
+inline constexpr unsigned move_assign_nothrow = 23;
 } // namespace record_bit
 
 // The names a bridged type needs on both sides of the bridge. Designated
@@ -620,8 +721,8 @@ record_flags() noexcept -> std::uint64_t
          record_bit_if<rust_should_impl_drop<Self>()>(record_bit::drop) |
          record_bit_if<rust_should_impl_copy<Self>()>(record_bit::copy) |
          record_bit_if<rust_should_impl_default<Self>()>(record_bit::default_new) |
-         record_bit_if<rust_should_impl_moveref_copy_new<Self>()>(record_bit::copy_new) |
-         record_bit_if<rust_should_impl_moveref_move_new<Self>()>(record_bit::move_new) |
+         record_bit_if<rust_should_impl_copy_new<Self>()>(record_bit::copy_new) |
+         record_bit_if<rust_should_impl_move_new<Self>()>(record_bit::move_new) |
          record_bit_if<rust_should_impl_eq<Self>()>(record_bit::eq) |
          record_bit_if<rust_should_impl_partial_eq<Self>()>(record_bit::partial_eq) |
          record_bit_if<rust_should_impl_partial_ord<Self>()>(record_bit::partial_ord) |
@@ -629,7 +730,14 @@ record_flags() noexcept -> std::uint64_t
          record_bit_if<rust_should_impl_hash<Self>()>(record_bit::hash) |
          record_bit_if<rust_should_impl_debug<Self>()>(record_bit::debug) |
          record_bit_if<rust_should_impl_display<Self>()>(record_bit::display) |
-         record_bit_if<cxx_has_operator_not_equal<Self>()>(record_bit::operator_not_equal);
+         record_bit_if<cxx_has_operator_not_equal<Self>()>(record_bit::operator_not_equal) |
+         record_bit_if<cxx_is_nothrow_default_constructible<Self>()>(record_bit::default_new_nothrow) |
+         record_bit_if<cxx_is_nothrow_copy_constructible<Self>()>(record_bit::copy_new_nothrow) |
+         record_bit_if<cxx_is_nothrow_move_constructible<Self>()>(record_bit::move_new_nothrow) |
+         record_bit_if<rust_should_impl_copy_assign<Self>()>(record_bit::copy_assign) |
+         record_bit_if<rust_should_impl_move_assign<Self>()>(record_bit::move_assign) |
+         record_bit_if<cxx_is_nothrow_copy_assignable<Self>()>(record_bit::copy_assign_nothrow) |
+         record_bit_if<cxx_is_nothrow_move_assignable<Self>()>(record_bit::move_assign_nothrow);
 }
 
 // Encode the record for `Self`. `N` must equal `encoded_spec_size(spec,
@@ -717,6 +825,26 @@ cxx_move_new(T* This, T&& that) noexcept -> void
 requires std::is_rvalue_reference_v<decltype(that)>
 {
   new (This) T(std::forward<T>(that));
+}
+
+template<typename T>
+requires(cxx_is_copy_assignable<T>())
+[[gnu::always_inline]]
+inline auto
+cxx_copy_assign(T* This, T const& that) noexcept -> void
+requires std::is_lvalue_reference_v<decltype(that)>
+{
+  *This = that;
+}
+
+template<typename T>
+requires(cxx_is_move_assignable<T>())
+[[gnu::always_inline]]
+inline auto
+cxx_move_assign(T* This, T&& that) noexcept -> void
+requires std::is_rvalue_reference_v<decltype(that)>
+{
+  *This = std::forward<T>(that);
 }
 
 template<typename T>

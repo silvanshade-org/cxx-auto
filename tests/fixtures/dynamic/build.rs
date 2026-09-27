@@ -6,8 +6,9 @@ use std::path::PathBuf;
 ///
 /// # Specification
 /// - provides: a C++26 archive with the cxx-auto module, the generated
-///   comparison methods, and the fixture constructor, and the generated modules
-///   under `OUT_DIR`.
+///   comparison methods and in-place construction shims, and the fixture
+///   helpers, and the generated modules under `OUT_DIR`. Exceptions stay
+///   enabled so the generated catching shims can report them.
 /// - fails: reports a C++ compiler, generation, or environment error.
 /// - panics: none.
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
@@ -16,14 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
     // cc reads CXX itself, including a leading wrapper such as ccache; Clang is
     // only the fallback when CXX is unset.
     let fallback = std::env::var_os("CXX").is_none().then_some("clang++");
-    let flags = [
-        "-std=c++2c",
-        "-fno-exceptions",
-        "-fno-rtti",
-        "-Wall",
-        "-Wextra",
-        "-Werror",
-    ];
+    let flags = ["-std=c++2c", "-fno-rtti", "-Wall", "-Wextra", "-Werror"];
 
     // An empty bridge set configures the include paths of cxx and cxx-auto.
     let mut base = cxx_build::bridges(Vec::<PathBuf>::new());
