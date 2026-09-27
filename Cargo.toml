@@ -182,7 +182,7 @@ private_intra_doc_links = "allow"
 [dependencies]
 bytemuck = { version = "1.13", optional = true }
 cc = "1.2"
-cpp-deps = { git = "https://github.com/silvanshade-org/cpp-deps", rev = "4274531406eab1c5dc2f4831fbf3fc3fce763098" }
+cpp-deps = { git = "https://github.com/silvanshade-org/cpp-deps", rev = "c50f1323f1c38237039616216fd773712355197a" }
 cxx = { version = "1.0", features = ["c++20"] }
 cxx-build = { version = "1.0", features = ["parallel"] }
 libc = "0.2"

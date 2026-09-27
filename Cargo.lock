@@ -72,7 +72,7 @@ dependencies = [
 [[package]]
 name = "cpp-deps"
 version = "0.1.0"
-source = "git+https://github.com/silvanshade-org/cpp-deps?rev=4274531406eab1c5dc2f4831fbf3fc3fce763098#4274531406eab1c5dc2f4831fbf3fc3fce763098"
+source = "git+https://github.com/silvanshade-org/cpp-deps?rev=c50f1323f1c38237039616216fd773712355197a#c50f1323f1c38237039616216fd773712355197a"
 dependencies = [
  "cc",
  "p1689",
@@ -272,7 +272,7 @@ dependencies = [
 [[package]]
 name = "p1689"
 version = "0.1.0"
-source = "git+https://github.com/silvanshade-org/cpp-deps?rev=4274531406eab1c5dc2f4831fbf3fc3fce763098#4274531406eab1c5dc2f4831fbf3fc3fce763098"
+source = "git+https://github.com/silvanshade-org/cpp-deps?rev=c50f1323f1c38237039616216fd773712355197a#c50f1323f1c38237039616216fd773712355197a"
 dependencies = [
  "serde",
 ]
