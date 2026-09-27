@@ -1,20 +1,21 @@
-use std::ffi::OsString;
-
 /// Compile the bridge and export its C++ header to downstream builds.
 ///
 /// # Specification
 /// - requires: CXX, when set, names a compiler accepting C++26 without
-///   exceptions.
+///   exceptions, optionally behind a wrapper such as `ccache clang++`.
 /// - ensures: the bridge is compiled with C++26 and exceptions disabled.
 /// - fails: returns the C++ compiler's error on a failed build.
 /// - panics: bridge generation may reject malformed Rust input.
 fn main() -> Result<(), Box<dyn core::error::Error>>
 {
-    let compiler = std::env::var_os("CXX").unwrap_or_else(|| OsString::from("clang++"));
-
     // An empty bridge exports cxx/include/**/*.hxx to dependencies.
-    cxx_build::bridge("src/gen/ctypes.rs")
-        .compiler(&compiler)
+    let mut bridge = cxx_build::bridge("src/gen/ctypes.rs");
+    // cc reads CXX itself, including a leading wrapper such as ccache; Clang is
+    // only the fallback when CXX is unset.
+    if std::env::var_os("CXX").is_none() {
+        bridge.compiler("clang++");
+    }
+    bridge
         .flag("-std=c++2c")
         .flag("-fno-exceptions")
         .flag("-fno-rtti")
