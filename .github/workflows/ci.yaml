@@ -22,12 +22,18 @@ on:
 env:
   CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
+  CCACHE_DEPEND: "true"
   # Local hook, index, and act tools do not belong in the hosted tool subset.
   # This list is identical to the Dockerfile's image build environment.
-  MISE_DISABLE_TOOLS: github:colbymchenry/codegraph,github:max-sixty/worktrunk,github:cli/cli,github:j178/prek,github:nektos/act,github:woodruffw/zizmor,npm:@commitlint/cli
+  MISE_DISABLE_TOOLS: github:colbymchenry/codegraph,github:max-sixty/worktrunk,github:j178/prek,github:nektos/act,github:woodruffw/zizmor,npm:@commitlint/cli
 
 permissions:
   contents: read
+
+# Preserve the main cache warmer and each merge-queue entry.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   template:
@@ -37,23 +43,29 @@ jobs:
       contents: read
       packages: read
     steps:
-      - &checkout
-        name: checkout
+      - &git-checkout
+        name: git checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - &git-checkout-history
+        name: checkout full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
       - &setup-cpp
         name: set up C++26 compiler
         # The checked-out branch supplies this action; no remote ref is involved.
         uses: ./.github/actions/setup-cpp # zizmor: ignore[self-repository]
         with:
-          install: ${{ needs.image-ref.outputs.image == '' }}
+          install: ${{ needs.ci-image-ref.outputs.image == '' }}
       - &setup-rust
         name: set up pinned Rust toolchain and cache
         # The checked-out branch supplies this action; no remote ref is involved.
         uses: ./.github/actions/setup-rust # zizmor: ignore[self-repository]
         with:
-          install-toolchain: ${{ needs.image-ref.outputs.image == '' }}
+          install-toolchain: ${{ needs.ci-image-ref.outputs.image == '' }}
           cache-save: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.job == 'rust-test' }}
           cache-workspace-crates: "true"
       - &setup-mise
@@ -61,51 +73,73 @@ jobs:
         uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
           version: "2026.9.14"
-          install: ${{ needs.image-ref.outputs.image == '' }}
+          install: ${{ needs.ci-image-ref.outputs.image == '' }}
           cache_save: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.job == 'rust-test' }}
+      - &setup-cpp-bare
+        name: set up C++26 compiler
+        uses: ./.github/actions/setup-cpp # zizmor: ignore[self-repository]
+      - &setup-rust-bare
+        name: set up pinned Rust toolchain and cache
+        uses: ./.github/actions/setup-rust # zizmor: ignore[self-repository]
+        with:
+          cache-save: ${{ github.event_name == 'push' && github.job == 'rust-test-macos' }}
+          cache-workspace-crates: "true"
+      - &setup-mise-bare
+        name: set up pinned tools
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: "2026.9.14"
+          cache_save: ${{ github.event_name == 'push' && github.job == 'rust-test-macos' }}
+      - &upload-test-report
+        name: upload JUnit report
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.CI_REPORT_NAME }}
+          path: target/nextest/ci/junit.xml
+          if-no-files-found: ignore
 
-  image-ref:
+  ci-image-ref:
+    name: resolve the CI image reference
     runs-on: *linux
     outputs:
       image: ${{ steps.ref.outputs.image }}
     steps:
       - id: ref
-        name: relay optional prebuilt image to container jobs
+        name: resolve the image reference
         env:
           CXX_AUTO_CI_IMAGE: ${{ inputs.ci_image || vars.CXX_AUTO_CI_IMAGE }}
         run: echo "image=$CXX_AUTO_CI_IMAGE" >> "$GITHUB_OUTPUT"
 
   changes:
+    name: detect changed-file categories
     runs-on: *linux
     outputs:
       rust: ${{ github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || steps.filter.outcome != 'success' || steps.filter.outputs.rust == 'true' }}
     steps:
-      - &checkout-history
-        name: checkout full history
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
+      - *git-checkout
       - id: filter
-        if: github.event_name != 'merge_group' && github.event_name != 'workflow_dispatch'
-        name: retain Rust and C++ gates for source or workflow changes
+        name: filter changed paths
         continue-on-error: true
-        shell: bash
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: git diff --name-only --no-renames "$BASE_SHA" HEAD | jq -R -s -r 'split("\n") | any(.[]; test("^(src/|crates/|tests/|cxx/|\\.github/|\\.config/|Cargo\\.|build\\.rs$|CMakeLists\\.txt$|mise\\.|rust-toolchain\\.toml$)")) | "rust=\(.)"' >> "$GITHUB_OUTPUT"
+          CI_EVENT_NAME: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CI_BEFORE_SHA: ${{ github.event.before }}
+        run: bash scripts/ci/changed-categories.sh
 
   rust-test:
-    needs: [image-ref, changes]
-    if: needs.changes.outputs.rust == 'true'
+    needs: [ci-image-ref, changes]
+    if: &heavy-lane ${{ needs.changes.outputs.rust == 'true' && (github.event_name == 'merge_group' || github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     runs-on: *linux
-    # Only the repository owner sets the image ref; image-ref relays it unchanged.
-    container: ${{ needs.image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
+    # Only the repository owner sets the image ref; ci-image-ref relays it unchanged.
+    container: ${{ needs.ci-image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
     permissions: *image-read-permissions
     env:
-      CXX: clang++-22
+      CXX: ccache clang++-22
+      CI_REPORT_NAME: junit-linux
     steps:
-      - *checkout
+      - *git-checkout
       - *setup-cpp
       - *setup-rust
       - *setup-mise
@@ -113,18 +147,19 @@ jobs:
         run: mise run check:build
       - name: run generated binding and Rust tests
         run: mise run check:test
+      - *upload-test-report
 
   rust-quality:
-    needs: [image-ref, changes]
+    needs: [ci-image-ref, changes]
     if: needs.changes.outputs.rust == 'true'
     runs-on: *linux
-    # Only the repository owner sets the image ref; image-ref relays it unchanged.
-    container: ${{ needs.image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
+    # Only the repository owner sets the image ref; ci-image-ref relays it unchanged.
+    container: ${{ needs.ci-image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
     permissions: *image-read-permissions
     env:
-      CXX: clang++-22
+      CXX: ccache clang++-22
     steps:
-      - *checkout
+      - *git-checkout
       - *setup-cpp
       - *setup-rust
       - *setup-mise
@@ -134,17 +169,17 @@ jobs:
         run: mise run check:doc
 
   cpp-clang:
-    needs: [image-ref, changes]
-    if: needs.changes.outputs.rust == 'true'
+    needs: [ci-image-ref, changes]
+    if: *heavy-lane
     runs-on: *linux
-    # Only the repository owner sets the image ref; image-ref relays it unchanged.
-    container: ${{ needs.image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
+    # Only the repository owner sets the image ref; ci-image-ref relays it unchanged.
+    container: ${{ needs.ci-image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
     permissions: *image-read-permissions
     env:
-      CXX: clang++-22
+      CXX: ccache clang++-22
       BUILD_DIR: target/cmake-clang22
     steps:
-      - *checkout
+      - *git-checkout
       - *setup-cpp
       - *setup-rust
       - *setup-mise
@@ -152,7 +187,7 @@ jobs:
         run: mise run check:build
       # C++ modules need the Ninja generator and Clang's dependency scanner.
       - name: configure Clang 22 C++26 probe target
-        run: cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_CXX_COMPILER=clang++-22 -DCMAKE_CXX_COMPILER_CLANG_SCAN_DEPS=clang-scan-deps-22
+        run: cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_CXX_COMPILER=clang++-22 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_CLANG_SCAN_DEPS=clang-scan-deps-22
       - name: compile probes
         run: cmake --build "$BUILD_DIR"
       - name: run C++ capability witnesses
@@ -160,23 +195,15 @@ jobs:
 
   cpp-gcc:
     needs: changes
-    if: needs.changes.outputs.rust == 'true'
+    if: *heavy-lane
     runs-on: *linux
     env:
-      CXX: clang++-22
+      CXX: ccache clang++-22
     steps:
-      - *checkout
-      - name: set up C++26 compiler
-        # The checked-out branch supplies this action; no remote ref is involved.
-        uses: ./.github/actions/setup-cpp # zizmor: ignore[self-repository]
-      - name: set up pinned Rust toolchain and cache
-        # The checked-out branch supplies this action; no remote ref is involved.
-        uses: ./.github/actions/setup-rust # zizmor: ignore[self-repository]
-      - name: set up pinned tools
-        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
-        with:
-          version: "2026.9.14"
-          cache_save: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - *git-checkout
+      - *setup-cpp-bare
+      - *setup-rust-bare
+      - *setup-mise-bare
       - name: produce CXX headers
         run: mise run check:build
       # This upstream image supplies GCC 16 even before our own CI image has
@@ -185,40 +212,42 @@ jobs:
       # Without a build system, the cxx_auto module is compiled first by hand;
       # GCC writes and then reads its interface under gcm.cache/.
       - name: compile C++26 probes with GCC 16
-        run: docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$HOME/.cargo/registry/src:$HOME/.cargo/registry/src:ro" -w "$GITHUB_WORKSPACE" gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e855c1 sh -c 'flags="-std=c++2c -fmodules -fno-exceptions -fno-rtti -Werror -Wall -Wextra -pedantic -I cxx/include -I target/cxxbridge"; g++ $flags -x c++ -c cxx/module/cxx_auto.cppm -o target/cxx_auto-gcc16.o && g++ $flags cxx/tests/probes.cxx target/cxx_auto-gcc16.o -o target/cxx-auto-probes-gcc16'
+        run: scripts/ci/gcc-probes.sh
       - name: run GCC 16 capability witnesses
         run: docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e855c1 ./target/cxx-auto-probes-gcc16
 
   rust-test-macos:
     needs: changes
-    if: needs.changes.outputs.rust == 'true'
+    if: *heavy-lane
     runs-on: macos-latest
+    env:
+      CI_REPORT_NAME: junit-macos
     steps:
-      - *checkout
+      - *git-checkout
       - name: install current upstream LLVM for C++26
-        run: brew install llvm
+        run: brew install llvm ccache
       - name: select upstream Clang instead of Apple Clang
-        run: echo "CXX=$(brew --prefix llvm)/bin/clang++" >> "$GITHUB_ENV"
-      - name: set up pinned Rust toolchain and cache
-        # The checked-out branch supplies this action; no remote ref is involved.
-        uses: ./.github/actions/setup-rust # zizmor: ignore[self-repository]
-      - name: set up pinned tools
-        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
-        with:
-          version: "2026.9.14"
+        run: echo "CXX=ccache $(brew --prefix llvm)/bin/clang++" >> "$GITHUB_ENV"
+      - *setup-rust-bare
+      - *setup-mise-bare
       - name: run macOS Rust and generated binding tests
         run: mise run check:test
+      - *upload-test-report
 
-  format:
-    needs: image-ref
+  format-gate:
+    name: check formatting and lint gates (treefmt)
+    needs: ci-image-ref
     runs-on: *linux
-    # Only the repository owner sets the image ref; image-ref relays it unchanged.
-    container: ${{ needs.image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
-    permissions: *image-read-permissions
+    # Only the repository owner sets the image ref; ci-image-ref relays it unchanged.
+    container: ${{ needs.ci-image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: read
     env:
-      CXX: clang++-22
+      CXX: ccache clang++-22
     steps:
-      - *checkout-history
+      - *git-checkout-history
       # The runner owns the checkout, not the container; checkout only trusts
       # the workspace for its own step. Changelog rendering reads git history.
       - name: trust the workspace for git
@@ -231,12 +260,19 @@ jobs:
       - name: verify pinned guidance baseline
         run: mise run check:baseline-hash
       - name: verify format and size budgets
+        env:
+          GH_TOKEN: ${{ github.event_name == 'workflow_dispatch' && github.token || '' }}
         run: mise run check:format
+      - name: ci pin drift check
+        run: mise run check:ci-pins
+      - name: ci script fixture suite
+        run: mise run check:ci-scripts
 
   workflow-lint:
+    name: check workflow lints (zizmor)
     runs-on: *linux
     steps:
-      - *checkout
+      - *git-checkout
       - name: install pinned zizmor
         uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2.87.20
         with:

@@ -12,8 +12,10 @@ namespace {
 struct ConstEqual
 {
   int value;
+
   [[maybe_unused]]
-  friend constexpr auto operator==(ConstEqual const& lhs, ConstEqual const& rhs) noexcept -> bool
+  friend constexpr auto
+  operator==(ConstEqual const& lhs, ConstEqual const& rhs) noexcept -> bool
   {
     return lhs.value == rhs.value;
   }
@@ -21,17 +23,27 @@ struct ConstEqual
 
 struct MutableOnly
 {
-  auto operator==(MutableOnly&) noexcept -> bool { return true; }
+  auto
+  operator==(MutableOnly& /*unused*/) noexcept -> bool
+  {
+    return true;
+  }
 };
 
 struct BoolProxy
 {
   struct Result
   {
-    explicit operator bool() const noexcept { return true; }
+    explicit
+    operator bool() const noexcept
+    {
+      return true;
+    }
   };
+
   [[maybe_unused]]
-  friend auto operator==(BoolProxy const&, BoolProxy const&) noexcept -> Result
+  friend auto
+  operator==(BoolProxy const& /*unused*/, BoolProxy const& /*unused*/) noexcept -> Result
   {
     return {};
   }
@@ -40,7 +52,9 @@ struct BoolProxy
 struct WeaklyOrdered
 {
   int value;
-  friend constexpr auto operator<=>(WeaklyOrdered const& lhs, WeaklyOrdered const& rhs) noexcept -> std::weak_ordering
+
+  friend constexpr auto
+  operator<=>(WeaklyOrdered const& lhs, WeaklyOrdered const& rhs) noexcept -> std::weak_ordering
   {
     if (lhs.value < rhs.value) {
       return std::weak_ordering::less;
@@ -55,7 +69,8 @@ struct WeaklyOrdered
 struct NonOrdering
 {
   [[maybe_unused]]
-  friend constexpr auto operator<=>(NonOrdering const&, NonOrdering const&) noexcept -> int
+  friend constexpr auto
+  operator<=>(NonOrdering const& /*unused*/, NonOrdering const& /*unused*/) noexcept -> int
   {
     return 0;
   }
@@ -64,11 +79,15 @@ struct NonOrdering
 struct LegacyPartial
 {
   double value;
-  friend constexpr auto operator<(LegacyPartial const& lhs, LegacyPartial const& rhs) noexcept -> bool
+
+  friend constexpr auto
+  operator<(LegacyPartial const& lhs, LegacyPartial const& rhs) noexcept -> bool
   {
     return lhs.value < rhs.value;
   }
-  friend constexpr auto operator==(LegacyPartial const& lhs, LegacyPartial const& rhs) noexcept -> bool
+
+  friend constexpr auto
+  operator==(LegacyPartial const& lhs, LegacyPartial const& rhs) noexcept -> bool
   {
     return lhs.value == rhs.value;
   }
@@ -79,7 +98,11 @@ struct Polymorphic
   virtual ~Polymorphic() = default;
   Polymorphic() = default;
   Polymorphic(Polymorphic const&) = default;
-  auto operator=(Polymorphic const&) -> Polymorphic& = default;
+  Polymorphic(Polymorphic&&) = default;
+  auto
+  operator=(Polymorphic const&) -> Polymorphic& = default;
+  auto
+  operator=(Polymorphic&&) -> Polymorphic& = default;
 };
 
 struct FinalValue final
@@ -92,26 +115,48 @@ struct AssignableBase
   int value = 0;
 };
 
-struct OwningPointer
+class OwningPointer
 {
-  int* owned = nullptr;
+public:
   OwningPointer() = default;
+  OwningPointer(OwningPointer const&) = delete;
+  auto
+  operator=(OwningPointer const&) -> OwningPointer& = delete;
+
   OwningPointer(OwningPointer&& that) noexcept
     : owned(std::exchange(that.owned, nullptr))
   {
   }
+
+  auto
+  operator=(OwningPointer&&) -> OwningPointer& = delete;
+
   ~OwningPointer() { delete owned; }
+
+private:
+  int* owned = nullptr;
 };
 
-struct RelocatablePointer
+class RelocatablePointer
 {
-  int* owned = nullptr;
+public:
   RelocatablePointer() = default;
+  RelocatablePointer(RelocatablePointer const&) = delete;
+  auto
+  operator=(RelocatablePointer const&) -> RelocatablePointer& = delete;
+
   RelocatablePointer(RelocatablePointer&& that) noexcept
     : owned(std::exchange(that.owned, nullptr))
   {
   }
+
+  auto
+  operator=(RelocatablePointer&&) -> RelocatablePointer& = delete;
+
   ~RelocatablePointer() { delete owned; }
+
+private:
+  int* owned = nullptr;
 };
 } // namespace
 
@@ -159,10 +204,12 @@ static_assert(cxx_auto::rust_should_impl_unpin<RelocatablePointer>(), "the autho
 } // namespace
 
 namespace fixture {
-struct Value
+struct Value // NOLINT(misc-use-internal-linkage): the exported FFI proxy names fixture::Value.
 {
   int value = 0;
-  friend constexpr auto operator==(Value const& lhs, Value const& rhs) noexcept -> bool
+
+  friend constexpr auto
+  operator==(Value const& lhs, Value const& rhs) noexcept -> bool
   {
     return lhs.value == rhs.value;
   }
@@ -176,6 +223,7 @@ template<>
 inline constexpr bool cxx_auto::rust_eq<fixture::Value> = true;
 
 namespace fixture::proxy {
+// NOLINTNEXTLINE(misc-use-anonymous-namespace): macro generates named FFI proxy helpers.
 CXX_AUTO_PRELUDE(Value, ::fixture::Value)
 } // namespace fixture::proxy
 
@@ -211,38 +259,36 @@ static_assert(has_bit(cxx_auto_type_value.flags, cxx_auto::record_bit::partial_e
 static_assert(!has_bit(cxx_auto_type_value.flags, cxx_auto::record_bit::ord));
 } // namespace
 
-int
-main()
+auto
+main() -> int
 {
   constexpr WeaklyOrdered less{ 1 };
   constexpr WeaklyOrdered greater{ 2 };
   if (
-    cxx_auto::cxx_operator_three_way_comparison(less, greater) != -1 ||
-    cxx_auto::cxx_operator_three_way_comparison(greater, less) != 1 ||
-    cxx_auto::cxx_operator_three_way_comparison(less, less) != 0
-  ) {
+    cxx_auto::cxx_operator_three_way_comparison(less, greater) != -1
+    || cxx_auto::cxx_operator_three_way_comparison(greater, less) != 1
+    || cxx_auto::cxx_operator_three_way_comparison(less, less) != 0) {
     return EXIT_FAILURE;
   }
 
-  const double nan = std::numeric_limits<double>::quiet_NaN();
+  double const nan = std::numeric_limits<double>::quiet_NaN();
   if (cxx_auto::cxx_operator_three_way_comparison(nan, 1.0) != std::numeric_limits<std::int8_t>::max()) {
     return EXIT_FAILURE;
   }
 
-  const LegacyPartial unordered{ nan };
-  const LegacyPartial one{ 1.0 };
-  const LegacyPartial two{ 2.0 };
+  LegacyPartial const unordered{ nan };
+  LegacyPartial const one{ 1.0 };
+  LegacyPartial const two{ 2.0 };
   if (
-    cxx_auto::cxx_operator_three_way_comparison(unordered, one) != std::numeric_limits<std::int8_t>::max() ||
-    cxx_auto::cxx_operator_three_way_comparison(one, two) != -1 ||
-    cxx_auto::cxx_operator_three_way_comparison(two, one) != 1 ||
-    cxx_auto::cxx_operator_three_way_comparison(one, one) != 0
-  ) {
+    cxx_auto::cxx_operator_three_way_comparison(unordered, one) != std::numeric_limits<std::int8_t>::max()
+    || cxx_auto::cxx_operator_three_way_comparison(one, two) != -1
+    || cxx_auto::cxx_operator_three_way_comparison(two, one) != 1
+    || cxx_auto::cxx_operator_three_way_comparison(one, one) != 0) {
     return EXIT_FAILURE;
   }
 
-  const fixture::Value value{ 3 };
-  const fixture::Value other{ 4 };
+  fixture::Value const value{ 3 };
+  fixture::Value const other{ 4 };
   if (!fixture::proxy::cxx_operator_equal(value, value) || fixture::proxy::cxx_operator_equal(value, other)) {
     return EXIT_FAILURE;
   }

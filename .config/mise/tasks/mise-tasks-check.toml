@@ -47,8 +47,16 @@ description = "Enforce the workspace lint wall"
 run = "cargo clippy --workspace --all-targets -- --deny warnings"
 
 ["check:test"]
-description = "Exercise every workspace test target"
-run = "cargo nextest run --workspace"
+description = "Exercise every workspace test target with CI JUnit output"
+run = "cargo nextest run --profile ci --workspace --all-targets"
+
+["check:ci-pins"]
+description = "Check workflow and image tool pins for drift"
+run = "sh scripts/ci/check-pins.sh"
+
+["check:ci-scripts"]
+description = "Exercise fail-open CI path filtering against isolated Git histories"
+run = "bash scripts/ci/test-changed-categories.sh"
 
 ["check:workflow-lint"]
 description = "Audit pinned hosted workflows"

@@ -34,23 +34,22 @@ struct Tracked final
   }
 
   Tracked(Tracked const& that) noexcept
-    : self(this)
-    , value(that.value)
+    : self(this), value(that.value)
   {
     that.check();
     ++live;
   }
 
   Tracked(Tracked&& that) noexcept
-    : self(this)
-    , value(that.value)
+    : self(this), value(that.value)
   {
     that.check();
     that.value = -1;
     ++live;
   }
 
-  auto operator=(Tracked const& that) -> Tracked&
+  auto
+  operator=(Tracked const& that) -> Tracked&
   {
     check();
     that.check();
@@ -61,7 +60,8 @@ struct Tracked final
     return *this;
   }
 
-  auto operator=(Tracked&& that) noexcept -> Tracked&
+  auto
+  operator=(Tracked&& that) noexcept -> Tracked&
   {
     check();
     that.check();
@@ -76,7 +76,8 @@ struct Tracked final
     --live;
   }
 
-  void check() const noexcept
+  void
+  check() const noexcept
   {
     if (self != this) {
       std::abort();
@@ -104,7 +105,8 @@ struct Handle
   }
 
   Handle(Handle const&) = delete;
-  auto operator=(Handle const&) -> Handle& = delete;
+  auto
+  operator=(Handle const&) -> Handle& = delete;
 
   Handle(Handle&& that) noexcept
     : owned(that.owned)
@@ -112,7 +114,8 @@ struct Handle
     that.owned = nullptr;
   }
 
-  auto operator=(Handle&&) -> Handle& = delete;
+  auto
+  operator=(Handle&&) -> Handle& = delete;
 
   ~Handle()
   {

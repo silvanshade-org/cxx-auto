@@ -84,7 +84,9 @@ mise exec -- gh variable set CXX_AUTO_CI_IMAGE --repo silvanshade-org/cxx-auto -
 mise exec -- gh workflow run ci.yaml --repo silvanshade-org/cxx-auto --ref main
 ```
 
-Merge-queue and manual CI runs force the full source gate; documentation-only pull requests may skip source lanes but still run formatting and workflow lint. GCC 16 and macOS keep their separate runners. If the image pull or warm run fails, the owner removes `CXX_AUTO_CI_IMAGE` to restore the bare-runner fallback; do not change package visibility or add a personal access token to repair GHCR access. When pin files change, build and preview the new tag before changing the variable.
+Pull requests run the light quality, format, workflow lint, and fail-open path-filter contracts; pushes, merge-queue entries, and manual runs add Rust/Clang/GCC/macOS tests with nextest JUnit reports. Native builds use ccache and emit depfiles; C++ formatting follows the reference runtime profile. Run `mise run check:ci-scripts` for path-filter boundary cases and `mise run lint:cpp` for the full gandr-style clang-tidy audit and `mise exec -- act push -j workflow-lint` for the local workflow smoke. GCC 16 and macOS keep their separate runners. If the image pull or warm run fails, the owner removes `CXX_AUTO_CI_IMAGE` to restore the bare-runner fallback; do not change package visibility or add a personal access token to repair GHCR access. When pin files change, build and preview the new tag before changing the variable.
+
+The format lane also runs `mise run check:ci-pins`: it rejects mismatched mise releases between the hosted workflow and the verified image installer.
 
 ## Release notes
 

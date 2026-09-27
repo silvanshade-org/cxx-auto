@@ -4,7 +4,7 @@ FROM gcc:16@sha256:ef558a40d1f13115293feee01526dbdb9aaad7c9c5a00da05f471ce042e85
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates cmake curl git gnupg jq ninja-build nodejs npm pkg-config && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates cmake curl git gnupg jq ninja-build nodejs npm pkg-config ccache && rm -rf /var/lib/apt/lists/*
 RUN curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg \
     && echo 'deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] https://apt.llvm.org/trixie/ llvm-toolchain-trixie-22 main' > /etc/apt/sources.list.d/llvm-22.list \
     && apt-get update && apt-get install -y --no-install-recommends clang-22 clang-tools-22 && rm -rf /var/lib/apt/lists/*
@@ -14,7 +14,7 @@ ENV PATH="/opt/cargo/bin:/opt/mise/shims:/usr/lib/llvm-22/bin:${PATH}"
 # These tools are for local editing, hooks, indexing, act, and workflow lint;
 # every container-backed gate's tools remain installed. Keep this list
 # identical in ci.yaml.
-ENV MISE_DISABLE_TOOLS="github:colbymchenry/codegraph,github:max-sixty/worktrunk,github:cli/cli,github:j178/prek,github:nektos/act,github:woodruffw/zizmor,npm:@commitlint/cli"
+ENV MISE_DISABLE_TOOLS="github:colbymchenry/codegraph,github:max-sixty/worktrunk,github:j178/prek,github:nektos/act,github:woodruffw/zizmor,npm:@commitlint/cli"
 WORKDIR /workspace
 COPY mise.toml mise.lock rust-toolchain.toml ./
 COPY .mise/locks/npm-oxfmt/ .mise/locks/npm-oxfmt/
