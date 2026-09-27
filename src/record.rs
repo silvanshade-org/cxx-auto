@@ -10,13 +10,14 @@ use object::ObjectSymbol as _;
 
 use crate::BoxResult;
 use crate::cxx_auto_artifact_info::CxxAutoArtifactInfo;
+use crate::cxx_auto_artifact_info::CxxNothrow;
 
 /// Symbol-name prefix of every record `CXX_AUTO_EXPORT` defines.
 const SYMBOL_PREFIX: &str = "cxx_auto_type_";
 /// `cxx_auto::record_magic`, as the bytes it holds in the object file.
 const MAGIC: &[u8; 8] = b"cxx_auto";
 /// `cxx_auto::record_version`: the wire format this reader decodes.
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;
 /// Bytes before the encoded spec: magic, version, spec length, size,
 /// alignment, and flags.
 const HEADER_LEN: usize = 40;
@@ -28,7 +29,8 @@ mod bit
 {
     /// `CXX` may pass the type by value.
     pub(super) const CXX_EXTERN_TYPE_TRIVIAL: u32 = 0;
-    /// Rust may move the type after pinning.
+    /// Rust may move the type after pinning: it is trivially movable, or its
+    /// author declared it relocatable.
     pub(super) const UNPIN: u32 = 1;
     /// The type opted into `Send`.
     pub(super) const SEND: u32 = 2;
@@ -60,8 +62,22 @@ mod bit
     pub(super) const DISPLAY: u32 = 15;
     /// C++ declares its own `operator!=`.
     pub(super) const OPERATOR_NOT_EQUAL: u32 = 16;
+    /// Default construction cannot throw.
+    pub(super) const DEFAULT_NEW_NOTHROW: u32 = 17;
+    /// Copy construction cannot throw.
+    pub(super) const COPY_NEW_NOTHROW: u32 = 18;
+    /// Move construction cannot throw.
+    pub(super) const MOVE_NEW_NOTHROW: u32 = 19;
+    /// Rust may invoke the C++ copy assignment operator.
+    pub(super) const COPY_ASSIGN: u32 = 20;
+    /// Rust may invoke the C++ move assignment operator.
+    pub(super) const MOVE_ASSIGN: u32 = 21;
+    /// Copy assignment cannot throw.
+    pub(super) const COPY_ASSIGN_NOTHROW: u32 = 22;
+    /// Move assignment cannot throw.
+    pub(super) const MOVE_ASSIGN_NOTHROW: u32 = 23;
     /// Number of defined bits; every higher bit must be clear.
-    pub(super) const COUNT: u32 = 17;
+    pub(super) const COUNT: u32 = 24;
 }
 
 /// Read every type record defined in one compiled object file.
@@ -225,6 +241,15 @@ fn decode(bytes: &[u8]) -> BoxResult<CxxAutoArtifactInfo>
         is_rust_drop: has(bit::DROP),
         is_rust_copy_new: has(bit::COPY_NEW),
         is_rust_move_new: has(bit::MOVE_NEW),
+        is_rust_copy_assign: has(bit::COPY_ASSIGN),
+        is_rust_move_assign: has(bit::MOVE_ASSIGN),
+        cxx_nothrow: CxxNothrow {
+            default_new: has(bit::DEFAULT_NEW_NOTHROW),
+            copy_new: has(bit::COPY_NEW_NOTHROW),
+            move_new: has(bit::MOVE_NEW_NOTHROW),
+            copy_assign: has(bit::COPY_ASSIGN_NOTHROW),
+            move_assign: has(bit::MOVE_ASSIGN_NOTHROW),
+        },
         is_rust_eq: has(bit::EQ),
         is_rust_partial_eq: has(bit::PARTIAL_EQ),
         is_rust_partial_ord: has(bit::PARTIAL_ORD),
@@ -370,9 +395,12 @@ mod tests
     #[test]
     fn decodes_names_layout_capabilities_and_lifetime_bounds() -> crate::BoxResult<()>
     {
-        // Bits: trivial (0), send (2), eq (9), partial_eq (10), operator!= (16).
-        let flags: u64 = 0b1_0000_0110_0000_0101;
-        let mut bytes = record(1, flags, &FIELDS);
+        // Bits: trivial (0), send (2), eq (9), partial_eq (10), operator!= (16),
+        // move_new_nothrow (19), move_assign (21).
+        let flags: u64 = [0_u32, 2, 9, 10, 16, 19, 21]
+            .into_iter()
+            .fold(0, |flags, bit| flags | 1_u64.checked_shl(bit).unwrap_or(0));
+        let mut bytes = record(2, flags, &FIELDS);
         bytes.extend_from_slice(b"trailing section bytes");
         let info = decode(&bytes)?;
         assert_eq!(
@@ -403,7 +431,12 @@ mod tests
                 && info.is_rust_eq
                 && info.is_rust_partial_eq
                 && !info.is_rust_ord
-                && info.cxx_has_operator_not_equal,
+                && info.cxx_has_operator_not_equal
+                && info.is_rust_move_assign
+                && !info.is_rust_copy_assign
+                && info.cxx_nothrow.move_new
+                && !info.cxx_nothrow.default_new
+                && !info.cxx_nothrow.move_assign,
             "each flag bit maps to its own capability",
         );
         let (binder, _) = crate::cxx_auto_artifact_info::emit_generics(&info, false);
@@ -421,21 +454,21 @@ mod tests
         let short = FIELDS.get(.. 6).unwrap_or_default();
         let bad_path = ["geo::2d", "Point", "", "Point", "geo", "p", "p.hxx"];
         let bad_lifetime = ["geo", "Point", "T", "Point", "geo", "p", "p.hxx"];
-        let mut bad_magic = record(1, 0, &FIELDS);
+        let mut bad_magic = record(2, 0, &FIELDS);
         if let Some(byte) = bad_magic.first_mut() {
             *byte = b'X';
         }
-        let truncated = record(1, 0, &FIELDS)
+        let truncated = record(2, 0, &FIELDS)
             .get(.. 50)
             .unwrap_or_default()
             .to_vec();
         let cases: [(&str, Vec<u8>); 7] = [
             ("magic", bad_magic),
-            ("version", record(2, 0, &FIELDS)),
-            ("flag bit", record(1, 0b10_0000_0000_0000_0000, &FIELDS)),
-            ("string count", record(1, 0, short)),
-            ("path identifier", record(1, 0, &bad_path)),
-            ("lifetime list", record(1, 0, &bad_lifetime)),
+            ("version", record(1, 0, &FIELDS)),
+            ("flag bit", record(2, 1_u64 << 24_u32, &FIELDS)),
+            ("string count", record(2, 0, short)),
+            ("path identifier", record(2, 0, &bad_path)),
+            ("lifetime list", record(2, 0, &bad_lifetime)),
             ("length", truncated),
         ];
         for (case, bytes) in cases {
