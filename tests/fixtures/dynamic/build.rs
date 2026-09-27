@@ -29,14 +29,10 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
     for flag in flags {
         base.flag(flag);
     }
-    // The cxx_auto module comes first: every later unit imports it through
-    // `cxx-auto.hxx`.
-    let modules = cxx_auto::compile_modules(&base, [cxx_auto::ModuleUnit::cxx_auto()], &out_dir)?;
-
-    let mut records = base.clone();
-    modules.configure(&mut records).file("src/export.cxx");
-    let objects = records.try_compile_intermediates()?;
-    let generated = cxx_auto::generate(&objects, &out_dir)?;
+    // cpp-deps orders the cxx_auto module before the record source that
+    // imports it through `cxx-auto.hxx`.
+    let modules = cxx_auto::compile_modules(&base, ["src/export.cxx"], &out_dir)?;
+    let generated = cxx_auto::generate(modules.objects(), &out_dir)?;
 
     let bridges = generated
         .iter()
