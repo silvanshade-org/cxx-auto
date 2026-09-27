@@ -14,7 +14,7 @@ runs:
       run: sudo apt-get update
     - if: ${{ inputs.install == 'true' }}
       shell: bash
-      run: sudo apt-get install -y --no-install-recommends ca-certificates curl gnupg cmake ninja-build
+      run: sudo apt-get install -y --no-install-recommends ca-certificates curl gnupg cmake ninja-build ccache
     - if: ${{ inputs.install == 'true' }}
       shell: bash
       run: curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg

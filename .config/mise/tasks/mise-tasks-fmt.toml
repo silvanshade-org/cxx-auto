@@ -16,8 +16,8 @@ cargo build --quiet
 flags="-std=c++26 -resource-dir=$(clang -print-resource-dir) -fno-exceptions -fno-rtti -Icxx/include -Itarget/cxxbridge"
 mkdir -p target/cxx-auto-tidy
 clang --gcc-toolchain=/usr $flags --precompile -x c++-module cxx/module/cxx_auto.cppm -o target/cxx-auto-tidy/cxx_auto.pcm
-clang-tidy --quiet cxx/module/cxx_auto.cppm -- $flags -x c++-module
-clang-tidy --quiet cxx/tests/probes.cxx cxx/lib/cmake.cxx -- $flags -fmodule-file=cxx_auto=target/cxx-auto-tidy/cxx_auto.pcm
+clang-tidy --quiet --warnings-as-errors='*' cxx/module/cxx_auto.cppm -- $flags -x c++-module
+clang-tidy --quiet --warnings-as-errors='*' cxx/tests/probes.cxx cxx/lib/cmake.cxx -- $flags -fmodule-file=cxx_auto=target/cxx-auto-tidy/cxx_auto.pcm
 """
 
 ["changelog:render"]

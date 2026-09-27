@@ -13,13 +13,16 @@ struct Number
   int value = 0;
 
   constexpr Number() noexcept = default;
+
   constexpr explicit Number(int number) noexcept
     : value(number)
   {
   }
 
-  friend constexpr auto operator==(Number const&, Number const&) noexcept -> bool = default;
-  friend constexpr auto operator<=>(Number const&, Number const&) noexcept = default;
+  friend constexpr auto
+  operator==(Number const&, Number const&) noexcept -> bool = default;
+  friend constexpr auto
+  operator<=>(Number const&, Number const&) noexcept = default;
 };
 
 /// Construct a number with the requested value.

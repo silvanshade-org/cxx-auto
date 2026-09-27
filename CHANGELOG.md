@@ -16,6 +16,7 @@ All notable changes to cxx-auto are documented here.
 
 - _(ci)_ Trust container checkout for changelog (#14)
 - _(build)_ Let cc read CXX so compiler wrappers work (#20)
+- _(build)_ Pin cpp-deps past its gcc submodule drop (#22)
 
 ### Unreleased Documentation
 
@@ -29,6 +30,7 @@ All notable changes to cxx-auto are documented here.
 ### Unreleased Continuous Integration
 
 - _(ci)_ Preview pinned GHCR image before owner opt-in (#13)
+- _(ci)_ Align hosted C++ workflow with shared pattern (#21)
 
 ### Unreleased Maintenance
 

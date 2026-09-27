@@ -11,6 +11,7 @@ module;
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <ostream>
 #include <ranges>
 #include <sstream>
 #include <string>
@@ -180,7 +181,7 @@ concept is_input_move_iterator = requires { //
 export namespace cxx_auto {
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_abi_align() noexcept -> size_t
 {
   return alignof(T);
@@ -188,7 +189,7 @@ cxx_abi_align() noexcept -> size_t
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_abi_size() noexcept -> size_t
 {
   return sizeof(T);
@@ -196,7 +197,7 @@ cxx_abi_size() noexcept -> size_t
 
 template<typename T, typename... Args>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_constructible() noexcept -> bool
 {
   return std::is_constructible_v<T, Args...>;
@@ -204,7 +205,7 @@ cxx_is_constructible() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_default_constructible() noexcept -> bool
 {
   return std::is_default_constructible_v<T>;
@@ -212,7 +213,7 @@ cxx_is_default_constructible() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_copy_constructible() noexcept -> bool
 {
   return std::is_copy_constructible_v<T>;
@@ -220,7 +221,7 @@ cxx_is_copy_constructible() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_move_constructible() noexcept -> bool
 {
   return std::is_move_constructible_v<T>;
@@ -228,7 +229,7 @@ cxx_is_move_constructible() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_nothrow_default_constructible() noexcept -> bool
 {
   return std::is_nothrow_default_constructible_v<T>;
@@ -236,7 +237,7 @@ cxx_is_nothrow_default_constructible() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_nothrow_copy_constructible() noexcept -> bool
 {
   return std::is_nothrow_copy_constructible_v<T>;
@@ -244,7 +245,7 @@ cxx_is_nothrow_copy_constructible() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_nothrow_move_constructible() noexcept -> bool
 {
   return std::is_nothrow_move_constructible_v<T>;
@@ -252,7 +253,7 @@ cxx_is_nothrow_move_constructible() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_copy_assignable() noexcept -> bool
 {
   return std::is_copy_assignable_v<T>;
@@ -260,7 +261,7 @@ cxx_is_copy_assignable() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_move_assignable() noexcept -> bool
 {
   return std::is_move_assignable_v<T>;
@@ -268,7 +269,7 @@ cxx_is_move_assignable() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_nothrow_copy_assignable() noexcept -> bool
 {
   return std::is_nothrow_copy_assignable_v<T>;
@@ -276,7 +277,7 @@ cxx_is_nothrow_copy_assignable() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_nothrow_move_assignable() noexcept -> bool
 {
   return std::is_nothrow_move_assignable_v<T>;
@@ -284,7 +285,7 @@ cxx_is_nothrow_move_assignable() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_destructible() noexcept -> bool
 {
   return std::is_destructible_v<T>;
@@ -292,7 +293,7 @@ cxx_is_destructible() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_trivially_copyable() noexcept -> bool
 {
   return std::is_trivially_copyable_v<T>;
@@ -300,7 +301,7 @@ cxx_is_trivially_copyable() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_trivially_movable() noexcept -> bool
 {
   return std::is_trivially_move_constructible_v<T> and std::is_trivially_destructible_v<T>;
@@ -308,7 +309,7 @@ cxx_is_trivially_movable() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_trivially_destructible() noexcept -> bool
 {
   return std::is_trivially_destructible_v<T>;
@@ -316,7 +317,7 @@ cxx_is_trivially_destructible() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_has_operator_equal() noexcept -> bool
 {
   return detection::has_operator_equal<T>;
@@ -324,7 +325,7 @@ cxx_has_operator_equal() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_has_operator_not_equal() noexcept -> bool
 {
   return detection::has_operator_not_equal<T>;
@@ -332,7 +333,7 @@ cxx_has_operator_not_equal() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_has_operator_less_than() noexcept -> bool
 {
   return detection::has_operator_less_than<T>;
@@ -340,17 +341,18 @@ cxx_has_operator_less_than() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_has_operator_three_way_comparison() noexcept -> bool
 {
-  return detection::has_operator_three_way_comparison<T> or
-         (not detection::has_operator_three_way_comparison<T> and detection::has_operator_less_than<T> and
-          detection::has_operator_equal<T>);
+  return detection::has_operator_three_way_comparison<T>
+      or (not detection::has_operator_three_way_comparison<T>
+          and detection::has_operator_less_than<T>
+          and detection::has_operator_equal<T>);
 }
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_hashable() noexcept -> bool
 {
   return detection::is_std_hashable<T>;
@@ -358,7 +360,7 @@ cxx_is_hashable() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_debuggable() noexcept -> bool
 {
   return detection::has_operator_ostream_left_shift<T>;
@@ -366,11 +368,12 @@ cxx_is_debuggable() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 cxx_is_displayable() noexcept -> bool
 {
-  return detection::has_to_string<T> or detection::has_operator_std_string<T> or
-         detection::has_operator_std_string_view<T>;
+  return detection::has_to_string<T>
+      or detection::has_operator_std_string<T>
+      or detection::has_operator_std_string_view<T>;
 }
 
 // Claims only a type's author can make. Specialize one beside the type's
@@ -419,7 +422,7 @@ inline constexpr bool rust_ord = detection::has_strong_ordering<T>;
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_cxx_extern_type_trivial() noexcept -> bool
 {
   return cxx_is_trivially_movable<T>();
@@ -427,7 +430,7 @@ rust_should_impl_cxx_extern_type_trivial() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_unpin() noexcept -> bool
 {
   return cxx_is_trivially_movable<T>() or rust_relocatable<T>;
@@ -435,7 +438,7 @@ rust_should_impl_unpin() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_send() noexcept -> bool
 {
   return rust_send<T>;
@@ -443,7 +446,7 @@ rust_should_impl_send() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_sync() noexcept -> bool
 {
   return rust_sync<T>;
@@ -451,7 +454,7 @@ rust_should_impl_sync() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_drop() noexcept -> bool
 {
   return cxx_is_destructible<T>() and not cxx_is_trivially_destructible<T>();
@@ -459,7 +462,7 @@ rust_should_impl_drop() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_copy() noexcept -> bool
 {
   return cxx_is_trivially_copyable<T>() and cxx_is_trivially_movable<T>() and not rust_should_impl_drop<T>();
@@ -467,7 +470,7 @@ rust_should_impl_copy() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_default() noexcept -> bool
 {
   return cxx_is_default_constructible<T>();
@@ -475,7 +478,7 @@ rust_should_impl_default() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_copy_new() noexcept -> bool
 {
   return cxx_is_copy_constructible<T>();
@@ -483,7 +486,7 @@ rust_should_impl_copy_new() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_move_new() noexcept -> bool
 {
   return cxx_is_move_constructible<T>();
@@ -493,7 +496,7 @@ rust_should_impl_move_new() noexcept -> bool
 // may refer to the base subobject of a more-derived object.
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_copy_assign() noexcept -> bool
 {
   return cxx_is_copy_assignable<T>() and rust_assignable<T>;
@@ -501,7 +504,7 @@ rust_should_impl_copy_assign() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_move_assign() noexcept -> bool
 {
   return cxx_is_move_assignable<T>() and rust_assignable<T>;
@@ -509,7 +512,7 @@ rust_should_impl_move_assign() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_partial_eq() noexcept -> bool
 {
   return cxx_has_operator_equal<T>();
@@ -517,7 +520,7 @@ rust_should_impl_partial_eq() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_eq() noexcept -> bool
 {
   return rust_eq<T> and rust_should_impl_partial_eq<T>();
@@ -525,16 +528,16 @@ rust_should_impl_eq() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_partial_ord() noexcept -> bool
 {
-  return cxx_has_operator_three_way_comparison<T>() or
-         (cxx_has_operator_less_than<T>() and cxx_has_operator_equal<T>());
+  return cxx_has_operator_three_way_comparison<T>()
+      or (cxx_has_operator_less_than<T>() and cxx_has_operator_equal<T>());
 }
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_ord() noexcept -> bool
 {
   return rust_ord<T> and rust_should_impl_eq<T>() and rust_should_impl_partial_ord<T>();
@@ -542,7 +545,7 @@ rust_should_impl_ord() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_hash() noexcept -> bool
 {
   return cxx_is_hashable<T>();
@@ -550,7 +553,7 @@ rust_should_impl_hash() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_debug() noexcept -> bool
 {
   return cxx_is_debuggable<T>();
@@ -558,7 +561,7 @@ rust_should_impl_debug() noexcept -> bool
 
 template<typename T>
 [[nodiscard]] [[gnu::always_inline]] [[gnu::const]]
-constexpr inline auto
+constexpr auto
 rust_should_impl_display() noexcept -> bool
 {
   return cxx_is_displayable<T>();
@@ -620,6 +623,7 @@ struct TypeSpec final
   // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
   std::string_view rust_path;
   std::string_view rust_name;
+  // NOLINTNEXTLINE(readability-redundant-member-init): Clang 22 needs a default for omitted designated fields.
   std::string_view rust_lifetimes{};
   std::string_view cxx_name;
   std::string_view cxx_namespace;
@@ -644,6 +648,7 @@ struct TypeRecord final
   std::array<char, N> spec;
   // NOLINTEND(misc-non-private-member-variables-in-classes)
 };
+
 static_assert(std::is_standard_layout_v<TypeRecord<1>>);
 static_assert(offsetof(TypeRecord<1>, magic) == 0);
 static_assert(offsetof(TypeRecord<1>, version) == 8);
@@ -703,8 +708,14 @@ record_bit_if(unsigned bit) noexcept -> std::uint64_t
 consteval auto
 encoded_spec_size(TypeSpec const& spec, std::string_view proxy_namespace) noexcept -> std::size_t
 {
-  return spec.rust_path.size() + spec.rust_name.size() + spec.rust_lifetimes.size() + spec.cxx_name.size() +
-         spec.cxx_namespace.size() + proxy_namespace.size() + spec.cxx_proxy_include.size() + 7;
+  return spec.rust_path.size()
+       + spec.rust_name.size()
+       + spec.rust_lifetimes.size()
+       + spec.cxx_name.size()
+       + spec.cxx_namespace.size()
+       + proxy_namespace.size()
+       + spec.cxx_proxy_include.size()
+       + 7;
 }
 
 // The capability flags of `Self`, one `record_bit` each.
@@ -714,30 +725,30 @@ consteval auto
 record_flags() noexcept -> std::uint64_t
 {
   using detail::record_bit_if;
-  return record_bit_if<rust_should_impl_cxx_extern_type_trivial<Self>()>(record_bit::cxx_extern_type_trivial) |
-         record_bit_if<rust_should_impl_unpin<Self>()>(record_bit::unpin) |
-         record_bit_if<rust_should_impl_send<Self>()>(record_bit::send) |
-         record_bit_if<rust_should_impl_sync<Self>()>(record_bit::sync) |
-         record_bit_if<rust_should_impl_drop<Self>()>(record_bit::drop) |
-         record_bit_if<rust_should_impl_copy<Self>()>(record_bit::copy) |
-         record_bit_if<rust_should_impl_default<Self>()>(record_bit::default_new) |
-         record_bit_if<rust_should_impl_copy_new<Self>()>(record_bit::copy_new) |
-         record_bit_if<rust_should_impl_move_new<Self>()>(record_bit::move_new) |
-         record_bit_if<rust_should_impl_eq<Self>()>(record_bit::eq) |
-         record_bit_if<rust_should_impl_partial_eq<Self>()>(record_bit::partial_eq) |
-         record_bit_if<rust_should_impl_partial_ord<Self>()>(record_bit::partial_ord) |
-         record_bit_if<rust_should_impl_ord<Self>()>(record_bit::ord) |
-         record_bit_if<rust_should_impl_hash<Self>()>(record_bit::hash) |
-         record_bit_if<rust_should_impl_debug<Self>()>(record_bit::debug) |
-         record_bit_if<rust_should_impl_display<Self>()>(record_bit::display) |
-         record_bit_if<cxx_has_operator_not_equal<Self>()>(record_bit::operator_not_equal) |
-         record_bit_if<cxx_is_nothrow_default_constructible<Self>()>(record_bit::default_new_nothrow) |
-         record_bit_if<cxx_is_nothrow_copy_constructible<Self>()>(record_bit::copy_new_nothrow) |
-         record_bit_if<cxx_is_nothrow_move_constructible<Self>()>(record_bit::move_new_nothrow) |
-         record_bit_if<rust_should_impl_copy_assign<Self>()>(record_bit::copy_assign) |
-         record_bit_if<rust_should_impl_move_assign<Self>()>(record_bit::move_assign) |
-         record_bit_if<cxx_is_nothrow_copy_assignable<Self>()>(record_bit::copy_assign_nothrow) |
-         record_bit_if<cxx_is_nothrow_move_assignable<Self>()>(record_bit::move_assign_nothrow);
+  return record_bit_if<rust_should_impl_cxx_extern_type_trivial<Self>()>(record_bit::cxx_extern_type_trivial)
+       | record_bit_if<rust_should_impl_unpin<Self>()>(record_bit::unpin)
+       | record_bit_if<rust_should_impl_send<Self>()>(record_bit::send)
+       | record_bit_if<rust_should_impl_sync<Self>()>(record_bit::sync)
+       | record_bit_if<rust_should_impl_drop<Self>()>(record_bit::drop)
+       | record_bit_if<rust_should_impl_copy<Self>()>(record_bit::copy)
+       | record_bit_if<rust_should_impl_default<Self>()>(record_bit::default_new)
+       | record_bit_if<rust_should_impl_copy_new<Self>()>(record_bit::copy_new)
+       | record_bit_if<rust_should_impl_move_new<Self>()>(record_bit::move_new)
+       | record_bit_if<rust_should_impl_eq<Self>()>(record_bit::eq)
+       | record_bit_if<rust_should_impl_partial_eq<Self>()>(record_bit::partial_eq)
+       | record_bit_if<rust_should_impl_partial_ord<Self>()>(record_bit::partial_ord)
+       | record_bit_if<rust_should_impl_ord<Self>()>(record_bit::ord)
+       | record_bit_if<rust_should_impl_hash<Self>()>(record_bit::hash)
+       | record_bit_if<rust_should_impl_debug<Self>()>(record_bit::debug)
+       | record_bit_if<rust_should_impl_display<Self>()>(record_bit::display)
+       | record_bit_if<cxx_has_operator_not_equal<Self>()>(record_bit::operator_not_equal)
+       | record_bit_if<cxx_is_nothrow_default_constructible<Self>()>(record_bit::default_new_nothrow)
+       | record_bit_if<cxx_is_nothrow_copy_constructible<Self>()>(record_bit::copy_new_nothrow)
+       | record_bit_if<cxx_is_nothrow_move_constructible<Self>()>(record_bit::move_new_nothrow)
+       | record_bit_if<rust_should_impl_copy_assign<Self>()>(record_bit::copy_assign)
+       | record_bit_if<rust_should_impl_move_assign<Self>()>(record_bit::move_assign)
+       | record_bit_if<cxx_is_nothrow_copy_assignable<Self>()>(record_bit::copy_assign_nothrow)
+       | record_bit_if<cxx_is_nothrow_move_assignable<Self>()>(record_bit::move_assign_nothrow);
 }
 
 // Encode the record for `Self`. `N` must equal `encoded_spec_size(spec,
@@ -768,15 +779,16 @@ type_record(TypeSpec const& spec, std::string_view proxy_namespace) noexcept -> 
     .spec = {},
   };
   std::size_t offset = 0;
-  for (std::string_view const field : {
-         spec.rust_path,
-         spec.rust_name,
-         spec.rust_lifetimes,
-         spec.cxx_name,
-         spec.cxx_namespace,
-         proxy_namespace,
-         spec.cxx_proxy_include,
-       }) {
+  for (
+    std::string_view const field : {
+      spec.rust_path,
+      spec.rust_name,
+      spec.rust_lifetimes,
+      spec.cxx_name,
+      spec.cxx_namespace,
+      proxy_namespace,
+      spec.cxx_proxy_include,
+    }) {
     for (char const byte : field) {
       record.spec.at(offset) = byte;
       ++offset;
@@ -790,7 +802,7 @@ type_record(TypeSpec const& spec, std::string_view proxy_namespace) noexcept -> 
 
 export namespace cxx_auto {
 template<typename T, typename... Args>
-requires(cxx_is_constructible<T, Args...>())
+  requires(cxx_is_constructible<T, Args...>())
 [[gnu::always_inline]]
 inline auto
 cxx_placement_new(T* This, Args&&... args) noexcept -> void
@@ -799,7 +811,7 @@ cxx_placement_new(T* This, Args&&... args) noexcept -> void
 }
 
 template<typename T>
-requires(cxx_is_default_constructible<T>())
+  requires(cxx_is_default_constructible<T>())
 [[gnu::always_inline]]
 inline auto
 cxx_default_new(T* This) noexcept -> void
@@ -808,47 +820,47 @@ cxx_default_new(T* This) noexcept -> void
 }
 
 template<typename T>
-requires(cxx_is_copy_constructible<T>())
+  requires(cxx_is_copy_constructible<T>())
 [[gnu::always_inline]]
 inline auto
 cxx_copy_new(T* This, T const& that) noexcept -> void
-requires std::is_lvalue_reference_v<decltype(that)>
+  requires std::is_lvalue_reference_v<decltype(that)>
 {
   new (This) T(that);
 }
 
 template<typename T>
-requires(cxx_is_move_constructible<T>())
+  requires(cxx_is_move_constructible<T>())
 [[gnu::always_inline]]
 inline auto
 cxx_move_new(T* This, T&& that) noexcept -> void
-requires std::is_rvalue_reference_v<decltype(that)>
+  requires std::is_rvalue_reference_v<decltype(that)>
 {
   new (This) T(std::forward<T>(that));
 }
 
 template<typename T>
-requires(cxx_is_copy_assignable<T>())
+  requires(cxx_is_copy_assignable<T>())
 [[gnu::always_inline]]
 inline auto
 cxx_copy_assign(T* This, T const& that) noexcept -> void
-requires std::is_lvalue_reference_v<decltype(that)>
+  requires std::is_lvalue_reference_v<decltype(that)>
 {
   *This = that;
 }
 
 template<typename T>
-requires(cxx_is_move_assignable<T>())
+  requires(cxx_is_move_assignable<T>())
 [[gnu::always_inline]]
 inline auto
 cxx_move_assign(T* This, T&& that) noexcept -> void
-requires std::is_rvalue_reference_v<decltype(that)>
+  requires std::is_rvalue_reference_v<decltype(that)>
 {
   *This = std::forward<T>(that);
 }
 
 template<typename T>
-requires(cxx_is_destructible<T>())
+  requires(cxx_is_destructible<T>())
 [[gnu::always_inline]]
 inline auto
 cxx_destruct(T* This) noexcept -> void
@@ -857,21 +869,21 @@ cxx_destruct(T* This) noexcept -> void
 }
 
 template<typename T>
-requires(cxx_has_operator_equal<T>())
+  requires(cxx_has_operator_equal<T>())
 [[gnu::always_inline]]
 inline auto
 cxx_operator_equal(T const& This, T const& That) noexcept -> bool
 {
-  return (This == That);
+  return This == That;
 }
 
 template<typename T>
-requires(cxx_has_operator_not_equal<T>())
+  requires(cxx_has_operator_not_equal<T>())
 [[gnu::always_inline]]
 inline auto
 cxx_operator_not_equal(T const& This, T const& That) noexcept -> bool
 {
-  return (This != That);
+  return This != That;
 }
 
 /// Translate a standard three-way comparison into the Rust-facing ordering code.
@@ -882,21 +894,26 @@ cxx_operator_not_equal(T const& This, T const& That) noexcept -> bool
 /// - hypothesis: weak equivalence and partial unordered results must differ from greater.
 /// - witness: cxx/tests/probes.cxx (probes).
 template<typename T>
-requires(detection::has_operator_three_way_comparison<T>)
+  requires(detection::has_operator_three_way_comparison<T>)
 [[gnu::always_inline]]
 inline auto
 cxx_operator_three_way_comparison(T const& This, T const& That) noexcept -> int8_t
 {
   auto result = (This <=> That);
+  // Comparison categories compare with literal zero, not nullptr.
+  // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr)
   if (result < 0) {
     return -1;
-  } else if (result > 0) { // NOLINT(llvm-else-after-return, readability-else-after-return)
-    return 1;
-  } else if (result == 0) {
-    return 0;
-  } else {
-    return std::numeric_limits<int8_t>::max();
   }
+  // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr): zero is the ordering operand.
+  if (result > 0) {
+    return 1;
+  }
+  // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr): zero is the ordering operand.
+  if (result == 0) {
+    return 0;
+  }
+  return std::numeric_limits<int8_t>::max();
 }
 
 /// Translate legacy less-than and equality into the Rust-facing ordering code.
@@ -907,10 +924,11 @@ cxx_operator_three_way_comparison(T const& This, T const& That) noexcept -> int8
 /// - hypothesis: incomparable unequal values must not be confused with greater values.
 /// - witness: cxx/tests/probes.cxx (probes).
 template<typename T>
-requires(
-  not detection::has_operator_three_way_comparison<T> and detection::has_operator_less_than<T> and
-  detection::has_operator_equal<T>
-)
+  requires(
+    not detection::has_operator_three_way_comparison<T>
+    and detection::has_operator_less_than<T>
+    and detection::has_operator_equal<T>
+  )
 [[gnu::always_inline]]
 inline auto
 cxx_operator_three_way_comparison(T const& This, T const& That) noexcept -> int8_t
@@ -928,7 +946,7 @@ cxx_operator_three_way_comparison(T const& This, T const& That) noexcept -> int8
 }
 
 template<typename T>
-requires(detection::is_std_hashable<T>)
+  requires(detection::is_std_hashable<T>)
 [[gnu::always_inline]]
 inline auto
 cxx_hash(T const& This) noexcept -> size_t
@@ -937,7 +955,7 @@ cxx_hash(T const& This) noexcept -> size_t
 }
 
 template<typename T>
-requires(detection::has_operator_ostream_left_shift<T>)
+  requires(detection::has_operator_ostream_left_shift<T>)
 [[gnu::always_inline]]
 inline auto
 cxx_debug(T const& This) noexcept -> std::string
@@ -948,7 +966,7 @@ cxx_debug(T const& This) noexcept -> std::string
 }
 
 template<typename T>
-requires(detection::has_to_string<T>)
+  requires(detection::has_to_string<T>)
 [[gnu::always_inline]]
 inline auto
 cxx_display(T const& This) noexcept -> std::string
@@ -957,7 +975,7 @@ cxx_display(T const& This) noexcept -> std::string
 }
 
 template<typename T>
-requires(not detection::has_to_string<T> and detection::has_operator_std_string<T>)
+  requires(not detection::has_to_string<T> and detection::has_operator_std_string<T>)
 [[gnu::always_inline]]
 inline auto
 cxx_display(T const& This) noexcept -> std::string
@@ -967,10 +985,11 @@ cxx_display(T const& This) noexcept -> std::string
 
 // FIXME: optimize this to use `&str` instead of `String`
 template<typename T>
-requires(
-  not detection::has_to_string<T> and not detection::has_operator_std_string<T> and
-  detection::has_operator_std_string_view<T>
-)
+  requires(
+    not detection::has_to_string<T>
+    and not detection::has_operator_std_string<T>
+    and detection::has_operator_std_string_view<T>
+  )
 [[gnu::always_inline]]
 inline auto
 cxx_display(T const& This) noexcept -> std::string
