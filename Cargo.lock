@@ -70,6 +70,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpp-deps"
+version = "0.1.0"
+source = "git+https://github.com/silvanshade-org/cpp-deps?rev=4274531406eab1c5dc2f4831fbf3fc3fce763098#4274531406eab1c5dc2f4831fbf3fc3fce763098"
+dependencies = [
+ "cc",
+ "p1689",
+ "serde_json",
+]
+
+[[package]]
 name = "cxx"
 version = "1.0.202"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -90,6 +100,7 @@ version = "0.0.3"
 dependencies = [
  "bytemuck",
  "cc",
+ "cpp-deps",
  "cxx",
  "cxx-build",
  "libc",
@@ -256,6 +267,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd229a0361b9d0d4396176e02d65897f487eebeab7caa6d443855ee152ca0b9c"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "p1689"
+version = "0.1.0"
+source = "git+https://github.com/silvanshade-org/cpp-deps?rev=4274531406eab1c5dc2f4831fbf3fc3fce763098#4274531406eab1c5dc2f4831fbf3fc3fce763098"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
