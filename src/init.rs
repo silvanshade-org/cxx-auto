@@ -85,7 +85,9 @@ unsafe impl<T> PinInit<T> for T
     ) -> Result<(), Infallible>
     {
         // SAFETY: the caller guarantees `slot` is valid for writes of a `T`.
-        unsafe { slot.write(self) };
+        unsafe {
+            slot.write(self);
+        }
         Ok(())
     }
 }
@@ -100,7 +102,9 @@ unsafe impl<T> Init<T> for T
     ) -> Result<(), Infallible>
     {
         // SAFETY: the caller guarantees `slot` is valid for writes of a `T`.
-        unsafe { slot.write(self) };
+        unsafe {
+            slot.write(self);
+        }
         Ok(())
     }
 }
@@ -115,7 +119,9 @@ unsafe impl<T, E> PinInit<T, E> for Result<T, E>
     ) -> Result<(), E>
     {
         // SAFETY: the caller guarantees `slot` is valid for writes of a `T`.
-        unsafe { slot.write(self?) };
+        unsafe {
+            slot.write(self?);
+        }
         Ok(())
     }
 }
@@ -130,7 +136,9 @@ unsafe impl<T, E> Init<T, E> for Result<T, E>
     ) -> Result<(), E>
     {
         // SAFETY: the caller guarantees `slot` is valid for writes of a `T`.
-        unsafe { slot.write(self?) };
+        unsafe {
+            slot.write(self?);
+        }
         Ok(())
     }
 }
@@ -430,7 +438,9 @@ impl<T> StackSlot<T>
         if self.initialized {
             self.initialized = false;
             // SAFETY: `initialized` recorded a live value.
-            unsafe { self.value.assume_init_drop() };
+            unsafe {
+                self.value.assume_init_drop();
+            }
         }
         // SAFETY: the slot's storage is valid and aligned for a `T`.
         unsafe { init.pinned_init(self.value.as_mut_ptr()) }?;
@@ -469,7 +479,9 @@ impl<T> Drop for StackSlot<T>
     {
         if self.initialized {
             // SAFETY: `initialized` records a live value, dropped in place.
-            unsafe { self.value.assume_init_drop() };
+            unsafe {
+                self.value.assume_init_drop();
+            }
         }
     }
 }

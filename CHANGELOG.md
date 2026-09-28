@@ -32,6 +32,10 @@ All notable changes to cxx-auto are documented here.
 - _(ci)_ Preview pinned GHCR image before owner opt-in (#13)
 - _(ci)_ Align hosted C++ workflow with shared pattern (#21)
 
+### Unreleased Configuration
+
+- _(repo)_ Require semicolons inside blocks (#23)
+
 ### Unreleased Maintenance
 
 - _(changelog)_ Extract renderer into workspace tooling crate (#12)
