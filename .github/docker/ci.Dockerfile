@@ -18,6 +18,7 @@ ENV MISE_DISABLE_TOOLS="github:colbymchenry/codegraph,github:max-sixty/worktrunk
 WORKDIR /workspace
 COPY mise.toml mise.lock rust-toolchain.toml ./
 COPY .mise/locks/npm-oxfmt/ .mise/locks/npm-oxfmt/
+COPY .config/mise/tasks/mise-tasks-fmt.toml .config/mise/tasks/mise-tasks-fmt.toml
 
 ARG TARGETARCH
 RUN set -eu; \
@@ -38,3 +39,6 @@ RUN set -eu; \
     g++ --version; \
     clang++-22 --version; \
     mise exec -- cargo --version
+
+# Public Git source: the generator installs without a credential or image secret.
+RUN mise run changelog:install

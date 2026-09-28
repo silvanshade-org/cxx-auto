@@ -252,6 +252,8 @@ jobs:
       # the workspace for its own step. Changelog rendering reads git history.
       - name: trust the workspace for git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: select the fetched default branch for changelog history
+        run: git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
       - *setup-cpp
       - *setup-rust
       - *setup-mise
@@ -261,7 +263,7 @@ jobs:
         run: mise run check:baseline-hash
       - name: verify format and size budgets
         env:
-          GH_TOKEN: ${{ github.event_name == 'workflow_dispatch' && github.token || '' }}
+          GH_TOKEN: ${{ github.event_name == 'pull_request' && github.token || '' }}
         run: mise run check:format
       - name: ci pin drift check
         run: mise run check:ci-pins

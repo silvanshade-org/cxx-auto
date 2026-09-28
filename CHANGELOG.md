@@ -21,6 +21,7 @@ All notable changes to cxx-auto are documented here.
 ### Unreleased Documentation
 
 - _(config)_ Bind shared guidance to cxx-auto (#10)
+- _(docs)_ Align Rust guidance and adopt changelog generator (#24)
 
 ### Unreleased Build
 
