@@ -20,6 +20,11 @@ clang-tidy --quiet --warnings-as-errors='*' cxx/module/cxx_auto.cppm -- $flags -
 clang-tidy --quiet --warnings-as-errors='*' cxx/tests/probes.cxx cxx/lib/cmake.cxx -- $flags -fmodule-file=cxx_auto=target/cxx-auto-tidy/cxx_auto.pcm
 """
 
+["changelog:install"]
+description = "Install the reviewed shared changelog generator"
+run = "cargo install --git https://github.com/silvanshade-org/workflow --rev 19b6f470fd8c1198784e25da78e88d0c6d8a39d5 --locked workflow-changelog"
+
 ["changelog:render"]
 description = "Render release history using the current PR title and Git tags"
-run = "cargo run --quiet -p cxx-auto-changelog"
+depends = ["changelog:install"]
+run = "workflow-changelog --exclude-path CHANGELOG.md"
