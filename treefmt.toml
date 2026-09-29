@@ -8,7 +8,6 @@
 # shared baseline. Source and test files remain inside the formatter walk.
 excludes = [
   "target/**",
-  ".git-cliff-output",
   ".codegraph/**",
   # A formatter must not rewrite resolver-owned lockfiles: the resolver and
   # formatter would otherwise fight on every run. Other lockfiles are scoped
@@ -23,28 +22,6 @@ excludes = [
   # hash: a formatter that rewrites one byte here breaks the pin.
   "docs/agents/baseline.md",
 ]
-
-# Generate before Markdown formatting; normalize and install only changed bytes.
-[formatter."changelog-generate"]
-priority = -3
-command = "sh"
-options = ["-c", "mise run changelog:render"]
-includes = ["CHANGELOG.md"]
-no-positional-arg-support = true
-
-[formatter."changelog-normalize"]
-priority = -2
-command = "rumdl"
-options = ["fmt", ".git-cliff-output", "--exclude"]
-includes = ["CHANGELOG.md"]
-no-positional-arg-support = true
-
-[formatter."changelog-install"]
-priority = -1
-command = "sh"
-options = ["-c", "install -C -m 0644 .git-cliff-output CHANGELOG.md"]
-includes = ["CHANGELOG.md"]
-no-positional-arg-support = true
 
 [formatter.rustfmt]
 command = "rustfmt"

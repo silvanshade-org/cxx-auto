@@ -90,4 +90,4 @@ The format lane also runs `mise run check:ci-pins`: it rejects mismatched mise r
 
 ## Release notes
 
-`CHANGELOG.md` is generated from full tagged Git history by the externally installed `workflow-changelog` binary pinned in `mise run changelog:install`. `mise run changelog:render` renders the proposed squash subject and PR number on an open branch, or committed history on `main`; treefmt normalizes and compare-installs the output. A missing or closed PR is refused without replacing the existing changelog. Retitle or rebase a PR, then rerun `mise run treefmt` and commit the result; `mise run check:format` checks it.
+`CHANGELOG.md` records package releases under `v<version>` tags. In a release PR, fetch full history and tags, then run `mise run changelog -- --tag v<version>`. Pinned git-cliff renders committed Conventional Commits, links authored commits, and excludes merges and pre-release tags. Commit the result, land the release PR as a merge commit, then tag the release commit and push the tag. Ordinary PRs leave release history unchanged; treefmt only formats tracked Markdown.

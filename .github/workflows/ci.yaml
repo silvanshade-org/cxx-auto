@@ -240,30 +240,33 @@ jobs:
     runs-on: *linux
     # Only the repository owner sets the image ref; ci-image-ref relays it unchanged.
     container: ${{ needs.ci-image-ref.outputs.image }} # zizmor: ignore[unpinned-images]
-    permissions:
-      contents: read
-      packages: read
-      pull-requests: read
+    permissions: *image-read-permissions
     env:
       CXX: ccache clang++-22
     steps:
       - *git-checkout-history
-      # The runner owns the checkout, not the container; checkout only trusts
-      # the workspace for its own step. Changelog rendering reads git history.
+      # The container must trust checkout metadata for per-commit author lookup.
       - name: trust the workspace for git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: select the fetched default branch for changelog history
-        run: git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
       - *setup-cpp
       - *setup-rust
       - *setup-mise
+      - name: install pinned commitlint
+        env:
+          MISE_DISABLE_TOOLS: ""
+        run: mise install npm:@commitlint/cli
+      - name: lint authored commits
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        shell: bash
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          MISE_DISABLE_TOOLS: ""
+        run: git rev-list --reverse --no-merges "$BASE..HEAD" | xargs -I{} env COMMITLINT_COMMIT={} mise exec -- commitlint --from {}~1 --to {}
       - name: refuse unresolved conflict markers
         run: mise run check:conflict-markers
       - name: verify pinned guidance baseline
         run: mise run check:baseline-hash
       - name: verify format and size budgets
-        env:
-          GH_TOKEN: ${{ github.event_name == 'pull_request' && github.token || '' }}
         run: mise run check:format
       - name: ci pin drift check
         run: mise run check:ci-pins

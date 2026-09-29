@@ -39,6 +39,3 @@ RUN set -eu; \
     g++ --version; \
     clang++-22 --version; \
     mise exec -- cargo --version
-
-# Public Git source: the generator installs without a credential or image secret.
-RUN mise run changelog:install
