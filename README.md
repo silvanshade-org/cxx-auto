@@ -90,4 +90,6 @@ The format lane also runs `mise run check:ci-pins`: it rejects mismatched mise r
 
 ## Release notes
 
+Commit provenance uses `Assisted-by: LLM` for assistance and `Co-authored-by` for people. Commitlint rejects known assistant co-authors even without session trailers; human names and personal email addresses remain valid.
+
 `CHANGELOG.md` records package releases under `v<version>` tags. In a release PR, fetch full history and tags, then run `mise run changelog -- --tag v<version>`. Pinned git-cliff renders committed Conventional Commits, links authored commits, and excludes merges and pre-release tags. Commit the result, land the release PR as a merge commit, then tag the release commit and push the tag. Ordinary PRs leave release history unchanged; treefmt only formats tracked Markdown.
