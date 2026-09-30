@@ -2,51 +2,6 @@
 
 All notable changes to cxx-auto are documented here.
 
-## Unreleased
-
-### Unreleased Features
-
-- _(cpp)_ Modernize C++26 bindings and guidance (#5)
-- _(build)_ Generate bindings in one build script from compiled type records (#15)
-- _(build)_ Build the C++ library as the cxx_auto named module (#16)
-- _(build)_ Order C++ modules by scanning them with cpp-deps (#17)
-- _(api)_ Construct C++ objects in place with owned initializers (#18)
-
-### Unreleased Bug Fixes
-
-- _(ci)_ Trust container checkout for changelog (#14)
-- _(build)_ Let cc read CXX so compiler wrappers work (#20)
-- _(build)_ Pin cpp-deps past its gcc submodule drop (#22)
-
-### Unreleased Documentation
-
-- _(config)_ Bind shared guidance to cxx-auto (#10)
-- _(docs)_ Align Rust guidance and adopt changelog generator (#24)
-
-### Unreleased Build
-
-- _(repo)_ Generate release changelog (#9)
-- _(repo)_ Pin C++ formatting and review tooling (#11)
-
-### Unreleased Continuous Integration
-
-- _(ci)_ Preview pinned GHCR image before owner opt-in (#13)
-- _(ci)_ Align hosted C++ workflow with shared pattern (#21)
-
-### Unreleased Configuration
-
-- _(repo)_ Require semicolons inside blocks (#23)
-
-### Unreleased Maintenance
-
-- _(changelog)_ Extract renderer into workspace tooling crate (#12)
-
-### Unreleased Legacy
-
-- Adjust clang-tidy settings
-- Update cxx-xtask dependency
-- Update README.md with package hosting attribution
-
 ## 0.0.3 - 2023-08-15
 
 ### 0.0.3 Legacy
