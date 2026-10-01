@@ -136,6 +136,10 @@ impl CxxAutoArtifactInfo
                 let path = path.to_string_lossy();
                 let ident = syn::Ident::new(descendant, span);
                 syn::parse_quote! {
+                    /// A descendant of this generated binding module.
+                    ///
+                    /// # Specification
+                    /// trivial.
                     #[path = #path]
                     pub(crate) mod #ident;
                 }
@@ -212,6 +216,10 @@ impl CxxAutoArtifactInfo
                     let path = path.to_string_lossy();
                     let ident = syn::Ident::new(descendant, span);
                     syn::parse_quote! {
+                        /// A descendant of this generated binding module.
+                        ///
+                        /// # Specification
+                        /// trivial.
                         #[path = #path]
                         pub(crate) mod #ident;
                     }
@@ -225,7 +233,10 @@ impl CxxAutoArtifactInfo
             }
         };
         let tokens = file.to_token_stream();
-        let contents = rust_format::RustFmt::default().format_tokens(tokens)?;
+        let contents = rust_format::RustFmt::from_config(
+            rust_format::Config::new_str().option("wrap_comments", "false"),
+        )
+        .format_tokens(tokens)?;
         std::fs::write(path, contents)?;
         Ok(())
     }
@@ -260,7 +271,11 @@ impl CxxAutoArtifactInfo
         let path = auto_out_dir.with_extension("rs");
         let file = self.emit_file(&auto_out_dir);
         let tokens = file.to_token_stream();
-        let contents = rust_format::RustFmt::default().format_tokens(tokens)?;
+        // Preserve specification-list indentation instead of reflowing its clauses.
+        let contents = rust_format::RustFmt::from_config(
+            rust_format::Config::new_str().option("wrap_comments", "false"),
+        )
+        .format_tokens(tokens)?;
         std::fs::write(path, contents)?;
         Ok(())
     }
@@ -300,6 +315,12 @@ fn emit_struct(
         .collect::<Punctuated<syn::Field, syn::Token![,]>>(),
     };
     syn::parse_quote! {
+        /// Rust storage for the recorded C++ type.
+        ///
+        /// # Specification
+        /// - ensures: size and alignment match the C++ type record.
+        /// - provides: owned storage with the recorded lifetime and capability boundaries.
+        /// - panics: none.
         #attribute
         #[repr(C, align(#align))]
         pub struct #ident #generics_binder #fields
@@ -330,7 +351,12 @@ fn emit_field(
 ) -> syn::Field
 {
     syn::Field {
-        attrs: ::alloc::vec![],
+        attrs: ::alloc::vec![
+            syn::parse_quote!(#[doc = r#"Private C++ representation or capability marker.
+
+# Specification
+trivial."#])
+        ],
         vis: syn::Visibility::Inherited,
         modifiers: syn::FieldModifiers::default(),
         ident: Some(syn::Ident::new(name, Span::call_site())),
@@ -427,8 +453,17 @@ fn emit_impl_cxx_extern_type(
         syn::parse_quote!(::cxx::kind::Opaque)
     };
     syn::parse_quote! {
+        /// Associate storage with its recorded C++ identity.
+        ///
+        /// # Safety
+        /// - unsafe invariants: the record and bridge name the same C++ type;
+        ///   storage matches its size and alignment. Trivial kind requires
+        ///   C++ relocation and destruction to permit value passing.
+        // SAFETY: the compiled type record supplies this identity and layout.
         unsafe impl #generics_binder ::cxx::ExternType for #ident #generics {
+            /// The fully qualified C++ type identity.
             type Id = ::cxx::type_id!(#type_id);
+            /// The recorded CXX value-passing capability.
             type Kind = #kind;
         }
     }
@@ -450,11 +485,19 @@ fn emit_impl_drop(
     info.is_rust_drop.then(|| {
         syn::parse_quote! {
             impl #generics_binder ::core::ops::Drop for #ident #generics {
+                /// Destroy the C++ object in its owner's storage.
+                ///
+                /// # Specification
+                /// - ensures: the live object's C++ destructor runs exactly once in place.
+                /// - provides: release of resources owned by the C++ object.
+                /// - panics: a throwing C++ destructor terminates at the native noexcept boundary.
                 #[cfg_attr(feature = "tracing", tracing::instrument)]
                 #[inline]
                 fn drop(&mut self) {
+                    // SAFETY: self is a live, exclusively borrowed C++ object;
+                    // its noexcept destructor runs in place.
                     unsafe {
-                        self::ffi::cxx_destruct(self);
+                        self::ffi::cxx_destruct(::core::ptr::from_mut(self));
                     }
                 }
             }
@@ -478,6 +521,14 @@ fn emit_impl_debug(
     if info.is_rust_debug {
         syn::parse_quote! {
             impl #generics_binder ::core::fmt::Debug for #ident #generics {
+                /// Format the C++ debug representation.
+                ///
+                /// # Specification
+                /// - ensures: writes the C++ debug string to the formatter.
+                /// - provides: the formatter's completion result.
+                /// - fails: returns `fmt::Error` when the formatter rejects output.
+                /// - panics: the formatting sink may panic; a C++ rendering or string-allocation
+                ///   exception terminates at the native noexcept boundary.
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     let string = self::ffi::cxx_debug(self);
                     write!(f, "{string}")
@@ -489,6 +540,13 @@ fn emit_impl_debug(
         let name = info.rust_name.as_str();
         syn::parse_quote! {
             impl #generics_binder ::core::fmt::Debug for #ident #generics {
+                /// Format the type name when C++ supplies no debug representation.
+                ///
+                /// # Specification
+                /// - ensures: writes a debug struct containing the type name and no fields.
+                /// - provides: the formatter's completion result.
+                /// - fails: returns `fmt::Error` when the formatter rejects output.
+                /// - panics: the formatting sink may panic.
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     f.debug_struct(#name).finish()
                 }
@@ -597,6 +655,15 @@ fn emit_initializer_methods(info: &CxxAutoArtifactInfo) -> alloc::vec::Vec<syn::
         );
         methods.push(syn::parse_quote! {
             /// The C++ default constructor, run in the owner's storage.
+            ///
+            /// # Specification
+            /// - ensures: running the initializer constructs Self in the owner's storage;
+            ///   success leaves a live pinned object, failure leaves nothing to destroy.
+            /// - provides: an initializer with the recorded C++ exception capability.
+            /// - fails: a throwing constructor returns `CxxException` with the caught message;
+            ///   a noexcept constructor has error type Infallible.
+            /// - panics: running a throwing C++ noexcept operation, or a throwing
+            ///   operation without exception support, terminates.
             #[inline]
             pub(crate) fn default_new() -> impl ::cxx_auto::init::PinInit<Self, #error> {
                 let body = move |this: *mut Self| -> ::core::result::Result<(), #error> { #call };
@@ -616,6 +683,15 @@ fn emit_initializer_methods(info: &CxxAutoArtifactInfo) -> alloc::vec::Vec<syn::
         );
         methods.push(syn::parse_quote! {
             /// The C++ copy constructor, run in the owner's storage.
+            ///
+            /// # Specification
+            /// - ensures: running the initializer copy-constructs Self in the owner's
+            ///   storage without modifying that; failure leaves nothing to destroy.
+            /// - provides: an initializer borrowing that until construction finishes.
+            /// - fails: a throwing constructor returns `CxxException` with the caught message;
+            ///   a noexcept constructor has error type Infallible.
+            /// - panics: running a throwing C++ noexcept operation, or a throwing
+            ///   operation without exception support, terminates.
             #[inline]
             pub(crate) fn copy_from(that: &Self) -> impl ::cxx_auto::init::PinInit<Self, #error> + '_ {
                 let body = move |this: *mut Self| -> ::core::result::Result<(), #error> { #call };
@@ -637,6 +713,16 @@ fn emit_initializer_methods(info: &CxxAutoArtifactInfo) -> alloc::vec::Vec<syn::
             /// The C++ move constructor, run in the owner's storage. The
             /// source is left moved-from in its own place, and its owner
             /// still destroys it.
+            ///
+            /// # Specification
+            /// - ensures: running the initializer move-constructs Self in the owner's
+            ///   storage; that stays pinned, moved-from, and owned by its original owner.
+            /// - provides: an initializer exclusively borrowing that until construction finishes.
+            /// - fails: a throwing constructor returns `CxxException` with the caught message
+            ///   and leaves no destination to destroy; a noexcept constructor has error type
+            ///   Infallible. Source state on failure follows its C++ constructor.
+            /// - panics: running a throwing C++ noexcept operation, or a throwing
+            ///   operation without exception support, terminates.
             #[inline]
             pub(crate) fn move_from(
                 that: ::core::pin::Pin<&mut Self>,
@@ -678,6 +764,14 @@ fn emit_assignment_methods(info: &CxxAutoArtifactInfo) -> alloc::vec::Vec<syn::I
         let (output, finish) = assignment_result(nothrow.copy_assign, &error);
         methods.push(syn::parse_quote! {
             /// The C++ copy assignment operator.
+            ///
+            /// # Specification
+            /// - ensures: success copy-assigns that into self without relocating either object.
+            /// - provides: in-place assignment with the recorded C++ exception capability.
+            /// - fails: a throwing assignment returns `CxxException` with the caught message;
+            ///   destination state on failure follows its C++ assignment operator.
+            /// - panics: a throwing C++ noexcept operation, or a throwing
+            ///   operation without exception support, terminates.
             #[inline]
             pub(crate) fn copy_assign(self: ::core::pin::Pin<&mut Self>, that: &Self) #output {
                 // SAFETY: C++ assigns in place and never relocates `self`.
@@ -702,6 +796,15 @@ fn emit_assignment_methods(info: &CxxAutoArtifactInfo) -> alloc::vec::Vec<syn::I
         methods.push(syn::parse_quote! {
             /// The C++ move assignment operator. The source is left
             /// moved-from in its own place, and its owner still destroys it.
+            ///
+            /// # Specification
+            /// - ensures: success move-assigns that into self without relocating either object;
+            ///   that stays pinned, moved-from, and owned by its original owner.
+            /// - provides: in-place assignment with the recorded C++ exception capability.
+            /// - fails: a throwing assignment returns `CxxException` with the caught message;
+            ///   both objects' states on failure follow their C++ assignment operator.
+            /// - panics: a throwing C++ noexcept operation, or a throwing
+            ///   operation without exception support, terminates.
             #[inline]
             pub(crate) fn move_assign(
                 self: ::core::pin::Pin<&mut Self>,
@@ -762,6 +865,14 @@ fn emit_impl_display(
     info.is_rust_display.then(|| {
         syn::parse_quote! {
             impl #generics_binder ::core::fmt::Display for #ident #generics {
+                /// Format the C++ display representation.
+                ///
+                /// # Specification
+                /// - ensures: writes the C++ display string to the formatter.
+                /// - provides: the formatter's completion result.
+                /// - fails: returns `fmt::Error` when the formatter rejects output.
+                /// - panics: the formatting sink may panic; a C++ rendering or string-allocation
+                ///   exception terminates at the native noexcept boundary.
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     let string = self::ffi::cxx_display(self);
                     write!(f, "{string}")
@@ -788,18 +899,28 @@ fn emit_impl_partial_eq(
     info.is_rust_partial_eq.then(|| {
         let ne: Option<syn::ImplItemFn> = info.cxx_has_operator_not_equal.then(|| {
             syn::parse_quote! {
+                /// Test the C++ inequality relation.
+                ///
+                /// # Specification
+                /// - provides: the recorded C++ inequality result for self and other.
+                /// - panics: a throwing C++ inequality operation terminates at the native noexcept boundary.
                 #[allow(clippy::partialeq_ne_impl)]
                 #[inline]
                 fn ne(&self, other: &Self) -> bool {
-                    self::ffi::cxx_operator_not_equal(self, other)
+                    self::ffi::cxx_operator_not_equal(self, other) == ::cxx_auto::bridge::Equality::NotEqual
                 }
             }
         });
         syn::parse_quote! {
             impl #generics_binder ::core::cmp::PartialEq for #ident #generics {
+                /// Test the C++ equality relation.
+                ///
+                /// # Specification
+                /// - provides: the recorded C++ equality result for self and other.
+                /// - panics: a throwing C++ equality operation terminates at the native noexcept boundary.
                 #[inline]
                 fn eq(&self, other: &Self) -> bool {
-                    self::ffi::cxx_operator_equal(self, other)
+                    self::ffi::cxx_operator_equal(self, other) == ::cxx_auto::bridge::Equality::Equal
                 }
                 #ne
             }
@@ -845,6 +966,12 @@ fn emit_impl_partial_ord(
     info.is_rust_partial_ord.then(|| {
         let partial_cmp: syn::ImplItemFn = if info.is_rust_ord {
             syn::parse_quote! {
+                /// Compare values using the recorded C++ total order.
+                ///
+                /// # Specification
+                /// - provides: Some(Less), Some(Equal), or Some(Greater) according to C++.
+                /// - panics: a throwing C++ comparison or equality operation terminates
+                ///   at the native noexcept boundary.
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
                     Some(self.cmp(other))
@@ -853,18 +980,21 @@ fn emit_impl_partial_ord(
         }
         else {
             syn::parse_quote! {
+                /// Compare values using the recorded C++ partial order.
+                ///
+                /// # Specification
+                /// - provides: Some(Less), Some(Equal), or Some(Greater) for ordered operands;
+                ///   None for an unordered C++ comparison.
+                /// - panics: a throwing C++ comparison or equality operation terminates
+                ///   at the native noexcept boundary.
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
                     let res = self::ffi::cxx_operator_three_way_comparison(self, other);
-                    if res == -1 {
-                        Some(::core::cmp::Ordering::Less)
-                    } else if res == 1 {
-                        Some(::core::cmp::Ordering::Greater)
-                    } else if res == 0 {
-                        Some(::core::cmp::Ordering::Equal)
-                    } else {
-                        ::core::assert_eq!(res, ::core::primitive::i8::MAX);
-                        None
+                    match res {
+                        ::cxx_auto::bridge::Comparison::Less => Some(::core::cmp::Ordering::Less),
+                        ::cxx_auto::bridge::Comparison::Equivalent => Some(::core::cmp::Ordering::Equal),
+                        ::cxx_auto::bridge::Comparison::Greater => Some(::core::cmp::Ordering::Greater),
+                        ::cxx_auto::bridge::Comparison::Unordered => None,
                     }
                 }
             }
@@ -893,10 +1023,17 @@ fn emit_impl_ord(
     info.is_rust_ord.then(|| {
         syn::parse_quote! {
             impl #generics_binder ::core::cmp::Ord for #ident #generics {
+                /// Compare values using the recorded C++ total order.
+                ///
+                /// # Specification
+                /// - provides: Less, Equal, or Greater according to the C++ comparison.
+                /// - panics: a throwing C++ comparison or equality operation terminates
+                ///   at the native noexcept boundary.
                 #[inline]
                 fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
                     let res = self::ffi::cxx_operator_three_way_comparison(self, other);
-                    res.cmp(&0)
+                    // The recorded rust_ord invariant excludes Unordered.
+                    res.cmp(&::cxx_auto::bridge::Comparison::Equivalent)
                 }
             }
         }
@@ -919,13 +1056,20 @@ fn emit_impl_hash(
     info.is_rust_hash.then(|| {
         syn::parse_quote! {
             impl #generics_binder ::core::hash::Hash for #ident #generics {
+                /// Feed the recorded C++ hash into the Rust hasher.
+                ///
+                /// # Specification
+                /// - ensures: writes the C++ hash as one pointer-sized word to state.
+                /// - provides: the hash projection selected by the C++ type author.
+                /// - panics: the caller-provided `Hasher` may panic; a throwing C++ hash
+                ///   operation terminates at the native noexcept boundary.
                 #[inline]
                 fn hash<H>(&self, state: &mut H)
                 where
                     H: ::core::hash::Hasher,
                 {
                     let hash = self::ffi::cxx_hash(self);
-                    state.write_usize(hash);
+                    state.write_usize(hash.value);
                 }
             }
         }
@@ -959,15 +1103,27 @@ fn emit_info_test_module(
         )
     });
     syn::parse_quote! {
+        /// Layout and capability witnesses for the recorded C++ type.
         #[cfg(test)]
         mod info {
             use super::*;
+            /// Runtime layout witnesses.
             mod test {
                 use super::*;
+                /// Check alignment against the compiled C++ type record.
+                ///
+                /// # Specification
+                /// - ensures: succeeds only when Rust and C++ alignment agree.
+                /// - panics: Rust alignment differs from the recorded C++ alignment.
                 #[test]
                 fn cxx_abi_align() {
                     ::core::assert_eq!(::core::mem::align_of::<#ident #generics>(), #align)
                 }
+                /// Check size against the compiled C++ type record.
+                ///
+                /// # Specification
+                /// - ensures: succeeds only when Rust and C++ size agree.
+                /// - panics: Rust size differs from the recorded C++ size.
                 #[test]
                 fn cxx_abi_size() {
                     ::core::assert_eq!(::core::mem::size_of::<#ident #generics>(), #size)
@@ -1009,41 +1165,110 @@ fn emit_item_mod_cxx_bridge(
     let construction = emit_construction_bridge_fns(info, ident, generics);
     let cxx_destruct: Option<syn::ForeignItemFn> = info.is_rust_drop.then(|| {
         syn::parse_quote! {
+            /// Destroy one live C++ object in place.
+            ///
+            /// # Specification
+            /// - requires: This points to a live, uniquely owned object of the recorded type.
+            /// - ensures: the noexcept C++ destructor runs once; This no longer contains a live object.
+            /// - provides: release of the object's resources.
+            /// - panics: a throwing C++ destructor terminates at the native noexcept boundary.
+            ///
+            /// # Safety
+            /// - unsafe invariants: This is non-null, aligned, valid for the object, and
+            ///   exclusively accessible; it must not be used as a live object after this call.
             unsafe fn cxx_destruct #generics (This: *mut #ident #generics);
         }
     });
     let cxx_operator_equal: Option<syn::ForeignItemFn> = info.is_rust_partial_eq.then(|| syn::parse_quote! {
-            fn cxx_operator_equal #generics (This: & #ident #generics, That: & #ident #generics) -> bool;
+            /// Evaluate C++ equality for two live objects.
+            ///
+            /// # Specification
+            /// - provides: the recorded C++ equality relation for This and That.
+            /// - panics: a throwing C++ equality operation terminates at the native noexcept boundary.
+            fn cxx_operator_equal #generics (This: & #ident #generics, That: & #ident #generics) -> Equality;
         });
     let cxx_operator_not_equal: Option<syn::ForeignItemFn> = (info.is_rust_partial_eq && info.cxx_has_operator_not_equal).then(|| syn::parse_quote! {
-            fn cxx_operator_not_equal #generics (This: & #ident #generics, That: & #ident #generics) -> bool;
+            /// Evaluate C++ inequality for two live objects.
+            ///
+            /// # Specification
+            /// - provides: the recorded C++ inequality relation for This and That.
+            /// - panics: a throwing C++ inequality operation terminates at the native noexcept boundary.
+            fn cxx_operator_not_equal #generics (This: & #ident #generics, That: & #ident #generics) -> Equality;
         });
     let cxx_operator_three_way_comparison: Option<syn::ForeignItemFn> = info.is_rust_partial_ord.then(|| syn::parse_quote! {
-            fn cxx_operator_three_way_comparison #generics (This: & #ident #generics, That: & #ident #generics) -> i8;
+            /// Evaluate the C++ three-way comparison.
+            ///
+            /// # Specification
+            /// - provides: less, equivalent, greater, or unordered according to C++.
+            /// - panics: a throwing C++ comparison or equality operation terminates
+            ///   at the native noexcept boundary.
+            fn cxx_operator_three_way_comparison #generics (This: & #ident #generics, That: & #ident #generics) -> Comparison;
         });
     let cxx_hash: Option<syn::ForeignItemFn> = info.is_rust_hash.then(|| {
         syn::parse_quote! {
-            fn cxx_hash #generics (This: & #ident #generics) -> usize;
+            /// Compute the C++ hash projection.
+            ///
+            /// # Specification
+            /// - provides: the pointer-sized hash selected by the C++ type author.
+            /// - panics: a throwing C++ hash operation terminates at the native noexcept boundary.
+            fn cxx_hash #generics (This: & #ident #generics) -> HashValue;
         }
     });
     let cxx_debug: Option<syn::ForeignItemFn> = info.is_rust_debug.then(|| {
         syn::parse_quote! {
+            /// Obtain the C++ debug representation.
+            ///
+            /// # Specification
+            /// - provides: the C++ debug string converted lossily to UTF-8.
+            /// - panics: a C++ rendering or string-allocation exception terminates
+            ///   at the native noexcept boundary.
             fn cxx_debug #generics (This: & #ident #generics) -> String;
         }
     });
     let cxx_display: Option<syn::ForeignItemFn> = info.is_rust_display.then(|| {
         syn::parse_quote! {
+            /// Obtain the C++ display representation.
+            ///
+            /// # Specification
+            /// - provides: the C++ display string converted lossily to UTF-8.
+            /// - panics: a C++ rendering or string-allocation exception terminates
+            ///   at the native noexcept boundary.
             fn cxx_display #generics (This: & #ident #generics) -> String;
         }
     });
     syn::parse_quote! {
+        /// CXX declarations for the recorded C++ capabilities.
+        ///
+        /// # Safety
+        /// - unsafe invariants: the included proxy implements the declared signatures
+        ///   and recorded layout. Safe shims accept live borrowed objects, do not
+        ///   relocate them, and cannot unwind through Rust; construction shims catch
+        ///   exceptions or call operations recorded as noexcept.
+        ///   Shared enum results have the co-versioned Rust/C++ discriminants and
+        ///   contain only declared variants; CXX does not validate that agreement.
         #[cxx::bridge]
         pub(crate) mod ffi {
             #![allow(clippy::needless_lifetimes)]
+            // SAFETY: the module's Safety section states the foreign block's
+            // layout, lifetime, and unwinding invariants. CXX rejects doc
+            // attributes on the foreign block itself.
             #[namespace = #cxx_proxy_namespace]
             unsafe extern "C++" {
                 include!(#cxx_proxy_include);
+                /// Shared Completion representation used by every generated bridge.
+                #[namespace = "cxx_auto"]
+                type Completion = ::cxx_auto::bridge::Completion;
+                /// Shared Equality representation used by every generated bridge.
+                #[namespace = "cxx_auto"]
+                type Equality = ::cxx_auto::bridge::Equality;
+                /// Shared Comparison representation used by every generated bridge.
+                #[namespace = "cxx_auto"]
+                type Comparison = ::cxx_auto::bridge::Comparison;
+                /// Shared HashValue representation used by every generated bridge.
+                #[namespace = "cxx_auto"]
+                type HashValue = ::cxx_auto::bridge::HashValue;
 
+                /// The C++ type represented by the enclosing Rust storage.
                 #[namespace = #cxx_namespace]
                 #[cxx_name = #cxx_name]
                 #[allow(unused)]
@@ -1085,48 +1310,91 @@ fn emit_construction_bridge_fns(
             nothrow.default_new,
             "default_new",
             None,
+            "This is aligned, writable, uninitialized storage for one object.",
+            "constructs a default object at This",
         ),
         (
             info.is_rust_copy_new,
             nothrow.copy_new,
             "copy_new",
             Some(&copied),
+            "This is aligned, writable, uninitialized storage disjoint from the live borrowed that.",
+            "copy-constructs an object at This without modifying that",
         ),
         (
             info.is_rust_move_new,
             nothrow.move_new,
             "move_new",
             Some(&moved),
+            "This is aligned, writable, uninitialized storage; that is a disjoint live, exclusively accessible object.",
+            "move-constructs an object at This; that stays live, moved-from, and owned in its original place",
         ),
         (
             info.is_rust_copy_assign,
             nothrow.copy_assign,
             "copy_assign",
             Some(&copied),
+            "This points to a live exclusively accessible object; that is a disjoint live borrowed object.",
+            "copy-assigns that into This without relocating either object",
         ),
         (
             info.is_rust_move_assign,
             nothrow.move_assign,
             "move_assign",
             Some(&moved),
+            "This and that are disjoint live, exclusively accessible objects.",
+            "move-assigns that into This; that stays live, moved-from, and owned in its original place",
         ),
     ];
     let span = proc_macro2::Span::call_site();
     operations
         .into_iter()
         .filter(|&(supported, ..)| supported)
-        .map(|(_, cannot_throw, operation, that)| {
+        .map(|(_, cannot_throw, operation, that, requires, ensures)| {
             let that = that.into_iter();
             if cannot_throw {
+                let documentation = alloc::format!(
+                    r"Run the C++ {operation} operation in place.
+
+# Specification
+- requires: {requires}
+- ensures: success {ensures}.
+- provides: the recorded C++ operation without relocating either storage place.
+- panics: a C++ operation that throws terminates at the native noexcept boundary.
+
+# Safety
+- unsafe invariants: {requires} Pointers retain the recorded type's layout and
+  lifetime; storage remains pinned while a non-relocatable object lives there.
+"
+                );
                 let name = syn::Ident::new(&alloc::format!("cxx_{operation}"), span);
                 syn::parse_quote! {
+                    #[doc = #documentation]
                     unsafe fn #name #generics (#this #(, #that)*);
                 }
             }
             else {
                 let name = syn::Ident::new(&alloc::format!("cxx_try_{operation}"), span);
+                let documentation = alloc::format!(
+                    r"Run the catching C++ {operation} operation in place.
+
+# Specification
+- requires: {requires}
+- ensures: success {ensures}; failed construction leaves no destination object
+  to destroy. State after a failed assignment or move follows the C++ operation.
+- provides: completion status; what contains the caught message on failure.
+- fails: with exception support, catches standard and unknown C++ exceptions
+  before returning to Rust.
+- panics: without exception support, a throwing C++ operation terminates.
+
+# Safety
+- unsafe invariants: {requires} Pointers retain the recorded type's layout and
+  lifetime; storage remains pinned while a non-relocatable object lives there.
+"
+                );
                 syn::parse_quote! {
-                    unsafe fn #name #generics (#this #(, #that)*, what: &mut String) -> bool;
+                    #[doc = #documentation]
+                    unsafe fn #name #generics (#this #(, #that)*, what: &mut String) -> Completion;
                 }
             }
         })
@@ -1213,12 +1481,22 @@ fn emit_impls_send_sync(
     }
     let item: syn::ItemImpl = if info.is_rust_send {
         syn::parse_quote! {
+            /// Permit ownership transfer according to the C++ author's opt-in.
+            ///
+            /// # Safety
+            /// - unsafe invariants: rust_send promises the value and its resources
+            ///   can be transferred between threads without violating their lifetimes.
             // SAFETY: the C++ type's author specialized `cxx_auto::rust_send`.
             unsafe impl #generics_binder ::core::marker::Send for #ident #generics {}
         }
     }
     else {
         syn::parse_quote! {
+            /// Permit shared access according to the C++ author's opt-in.
+            ///
+            /// # Safety
+            /// - unsafe invariants: rust_sync promises shared references can be used
+            ///   concurrently across threads without data races or lifetime violations.
             // SAFETY: the C++ type's author specialized `cxx_auto::rust_sync`.
             unsafe impl #generics_binder ::core::marker::Sync for #ident #generics {}
         }

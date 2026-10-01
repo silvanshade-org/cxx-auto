@@ -6,41 +6,34 @@
 // the declarations below directly, and a module's global fragment is not
 // visible to its importers, so this header includes them itself.
 #include "cxx-auto-ctypes.hxx"
+#include "cxx-auto-results.hxx"
+#include "cxx-auto-std.hxx"
 #include "rust/cxx.h"
-
-#include <cstddef>
-#include <cstdint>
-#include <exception>
-#include <string>
-#include <string_view>
-#include <utility>
 
 import cxx_auto;
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
 
-// Run one statement that may throw, in a function returning `bool`: `true`
-// when it completes, otherwise `false` with the exception's message in `WHAT`
-// (a `rust::String&`). The choice follows the translation unit that expands
-// the prelude: without exceptions nothing can be caught, and a throw
-// terminates the process as it would anywhere else in that unit.
+// Run one statement returning Completion::Completed on success or
+// Completion::Threw with the caught message in WHAT (a rust::String&).
+// Without exception support, an attempted throw terminates the process.
 #if defined(__cpp_exceptions)
 #define CXX_AUTO_TRY_STATEMENT(WHAT, ...)           \
   try {                                             \
     __VA_ARGS__;                                    \
-    return true;                                    \
+    return ::cxx_auto::Completion::Completed;       \
   } catch (::std::exception const& error) {         \
     WHAT = ::rust::String::lossy(error.what());     \
-    return false;                                   \
+    return ::cxx_auto::Completion::Threw;           \
   } catch (...) {                                   \
     WHAT = ::rust::String("unknown C++ exception"); \
-    return false;                                   \
+    return ::cxx_auto::Completion::Threw;           \
   }
 #else
 #define CXX_AUTO_TRY_STATEMENT(WHAT, ...) \
   static_cast<void>(WHAT);                \
   __VA_ARGS__;                            \
-  return true;
+  return ::cxx_auto::Completion::Completed;
 #endif
 
 #define CXX_AUTO_PRELUDE_SELECT_MACRO(_0, _1, _2, NAME, ...) NAME
@@ -88,150 +81,152 @@ import cxx_auto;
   )                                       \
   (__VA_ARGS__)
 
-#define CXX_AUTO_PRELUDE(CXX_NAME, ...)                                                                 \
-  CXX_AUTO_PRELUDE_TY_CON_DEFINE(__VA_ARGS__)                                                           \
-  CXX_AUTO_PRELUDE_TY_ARGS_DEFINE(__VA_ARGS__)                                                          \
-  CXX_AUTO_PRELUDE_TYPE_DEFINE(__VA_ARGS__)                                                             \
-  using CXX_NAME = Self;                                                                                \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_default_constructible<T>())                 \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_default_new(T* This) noexcept -> void                                          \
-  {                                                                                                     \
-    return ::cxx_auto::cxx_default_new(This);                                                           \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_copy_constructible<T>())                    \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_copy_new(T* This, T const& that) noexcept -> void                              \
-  {                                                                                                     \
-    return ::cxx_auto::cxx_copy_new(This, that);                                                        \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_move_constructible<T>())                    \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_move_new(T* This, T* that) noexcept -> void                                    \
-  {                                                                                                     \
-    /* NOLINTNEXTLINE(hicpp-move-const-arg, performance-move-const-arg) */                              \
-    return ::cxx_auto::cxx_move_new(This, ::std::move(*that));                                          \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_copy_assignable<T>())                       \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_copy_assign(T* This, T const& that) noexcept -> void                           \
-  {                                                                                                     \
-    return ::cxx_auto::cxx_copy_assign(This, that);                                                     \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_move_assignable<T>())                       \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_move_assign(T* This, T* that) noexcept -> void                                 \
-  {                                                                                                     \
-    /* NOLINTNEXTLINE(hicpp-move-const-arg, performance-move-const-arg) */                              \
-    return ::cxx_auto::cxx_move_assign(This, ::std::move(*that));                                       \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_default_constructible<T>())                 \
-  [[maybe_unused]]                                                                                      \
-  static inline auto cxx_try_default_new(T* This, ::rust::String& what) noexcept -> bool                \
-  {                                                                                                     \
-    CXX_AUTO_TRY_STATEMENT(what, ::new (static_cast<void*>(This)) T())                                  \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_copy_constructible<T>())                    \
-  [[maybe_unused]]                                                                                      \
-  static inline auto cxx_try_copy_new(T* This, T const& that, ::rust::String& what) noexcept -> bool    \
-  {                                                                                                     \
-    CXX_AUTO_TRY_STATEMENT(what, ::new (static_cast<void*>(This)) T(that))                              \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_move_constructible<T>())                    \
-  [[maybe_unused]]                                                                                      \
-  static inline auto cxx_try_move_new(T* This, T* that, ::rust::String& what) noexcept -> bool          \
-  {                                                                                                     \
-    /* NOLINTNEXTLINE(hicpp-move-const-arg, performance-move-const-arg) */                              \
-    CXX_AUTO_TRY_STATEMENT(what, ::new (static_cast<void*>(This)) T(::std::move(*that)))                \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_copy_assignable<T>())                       \
-  [[maybe_unused]]                                                                                      \
-  static inline auto cxx_try_copy_assign(T* This, T const& that, ::rust::String& what) noexcept -> bool \
-  {                                                                                                     \
-    CXX_AUTO_TRY_STATEMENT(what, *This = that)                                                          \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_move_assignable<T>())                       \
-  [[maybe_unused]]                                                                                      \
-  static inline auto cxx_try_move_assign(T* This, T* that, ::rust::String& what) noexcept -> bool       \
-  {                                                                                                     \
-    /* NOLINTNEXTLINE(hicpp-move-const-arg, performance-move-const-arg) */                              \
-    CXX_AUTO_TRY_STATEMENT(what, *This = ::std::move(*that))                                            \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_destructible<T>())                          \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_destruct(T* This) noexcept -> void                                             \
-  {                                                                                                     \
-    return ::cxx_auto::cxx_destruct(This);                                                              \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_equal<T>())                       \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_operator_equal(T const& This, T const& That) noexcept -> bool                  \
-  {                                                                                                     \
-    return ::cxx_auto::cxx_operator_equal(This, That);                                                  \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_not_equal<T>())                   \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_operator_not_equal(T const& This, T const& That) noexcept -> bool              \
-  {                                                                                                     \
-    return ::cxx_auto::cxx_operator_not_equal(This, That);                                              \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_three_way_comparison<T>())        \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_operator_three_way_comparison(T const& This, T const& That) noexcept -> int8_t \
-  {                                                                                                     \
-    return ::cxx_auto::cxx_operator_three_way_comparison(This, That);                                   \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_hashable<T>())                              \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_hash(T const& This) noexcept -> size_t                                         \
-  {                                                                                                     \
-    return ::cxx_auto::cxx_hash(This);                                                                  \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_debuggable<T>())                            \
-  [[maybe_unused]] [[gnu::always_inline]]                                                               \
-  static inline auto cxx_debug(T const& This) noexcept -> rust::string                                  \
-  {                                                                                                     \
-    return ::rust::String::lossy(::cxx_auto::cxx_debug(This));                                          \
-  }                                                                                                     \
-                                                                                                        \
-  template<typename T>                                                                                  \
-    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_displayable<T>())                           \
-  [[gnu::always_inline]]                                                                                \
-  static inline auto cxx_display(T const& This) noexcept -> rust::string                                \
-  {                                                                                                     \
-    return ::rust::String::lossy(::cxx_auto::cxx_display(This));                                        \
+#define CXX_AUTO_PRELUDE(CXX_NAME, ...)                                                                                \
+  CXX_AUTO_PRELUDE_TY_CON_DEFINE(__VA_ARGS__)                                                                          \
+  CXX_AUTO_PRELUDE_TY_ARGS_DEFINE(__VA_ARGS__)                                                                         \
+  CXX_AUTO_PRELUDE_TYPE_DEFINE(__VA_ARGS__)                                                                            \
+  using CXX_NAME = Self;                                                                                               \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_default_constructible<T>())                                \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_default_new(T* This) noexcept -> void                                                         \
+  {                                                                                                                    \
+    return ::cxx_auto::cxx_default_new(This);                                                                          \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_copy_constructible<T>())                                   \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_copy_new(T* This, T const& that) noexcept -> void                                             \
+  {                                                                                                                    \
+    return ::cxx_auto::cxx_copy_new(This, that);                                                                       \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_move_constructible<T>())                                   \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_move_new(T* This, T* that) noexcept -> void                                                   \
+  {                                                                                                                    \
+    /* NOLINTNEXTLINE(hicpp-move-const-arg, performance-move-const-arg) */                                             \
+    return ::cxx_auto::cxx_move_new(This, ::std::move(*that));                                                         \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_copy_assignable<T>())                                      \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_copy_assign(T* This, T const& that) noexcept -> void                                          \
+  {                                                                                                                    \
+    return ::cxx_auto::cxx_copy_assign(This, that);                                                                    \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_move_assignable<T>())                                      \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_move_assign(T* This, T* that) noexcept -> void                                                \
+  {                                                                                                                    \
+    /* NOLINTNEXTLINE(hicpp-move-const-arg, performance-move-const-arg) */                                             \
+    return ::cxx_auto::cxx_move_assign(This, ::std::move(*that));                                                      \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_default_constructible<T>())                                \
+  [[maybe_unused]]                                                                                                     \
+  static inline auto cxx_try_default_new(T* This, ::rust::String& what) noexcept -> ::cxx_auto::Completion             \
+  {                                                                                                                    \
+    CXX_AUTO_TRY_STATEMENT(what, ::new (static_cast<void*>(This)) T())                                                 \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_copy_constructible<T>())                                   \
+  [[maybe_unused]]                                                                                                     \
+  static inline auto cxx_try_copy_new(T* This, T const& that, ::rust::String& what) noexcept -> ::cxx_auto::Completion \
+  {                                                                                                                    \
+    CXX_AUTO_TRY_STATEMENT(what, ::new (static_cast<void*>(This)) T(that))                                             \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_move_constructible<T>())                                   \
+  [[maybe_unused]]                                                                                                     \
+  static inline auto cxx_try_move_new(T* This, T* that, ::rust::String& what) noexcept -> ::cxx_auto::Completion       \
+  {                                                                                                                    \
+    /* NOLINTNEXTLINE(hicpp-move-const-arg, performance-move-const-arg) */                                             \
+    CXX_AUTO_TRY_STATEMENT(what, ::new (static_cast<void*>(This)) T(::std::move(*that)))                               \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_copy_assignable<T>())                                      \
+  [[maybe_unused]]                                                                                                     \
+  static inline auto cxx_try_copy_assign(T* This, T const& that, ::rust::String& what) noexcept                        \
+    -> ::cxx_auto::Completion                                                                                          \
+  {                                                                                                                    \
+    CXX_AUTO_TRY_STATEMENT(what, *This = that)                                                                         \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_move_assignable<T>())                                      \
+  [[maybe_unused]]                                                                                                     \
+  static inline auto cxx_try_move_assign(T* This, T* that, ::rust::String& what) noexcept -> ::cxx_auto::Completion    \
+  {                                                                                                                    \
+    /* NOLINTNEXTLINE(hicpp-move-const-arg, performance-move-const-arg) */                                             \
+    CXX_AUTO_TRY_STATEMENT(what, *This = ::std::move(*that))                                                           \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_destructible<T>())                                         \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_destruct(T* This) noexcept -> void                                                            \
+  {                                                                                                                    \
+    return ::cxx_auto::cxx_destruct(This);                                                                             \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_equal<T>())                                      \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_operator_equal(T const& This, T const& That) noexcept -> ::cxx_auto::Equality                 \
+  {                                                                                                                    \
+    return ::cxx_auto::cxx_operator_equal(This, That);                                                                 \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_not_equal<T>())                                  \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_operator_not_equal(T const& This, T const& That) noexcept -> ::cxx_auto::Equality             \
+  {                                                                                                                    \
+    return ::cxx_auto::cxx_operator_not_equal(This, That);                                                             \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_has_operator_three_way_comparison<T>())                       \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_operator_three_way_comparison(T const& This, T const& That) noexcept                          \
+    -> ::cxx_auto::Comparison                                                                                          \
+  {                                                                                                                    \
+    return ::cxx_auto::cxx_operator_three_way_comparison(This, That);                                                  \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_hashable<T>())                                             \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_hash(T const& This) noexcept -> ::cxx_auto::HashValue                                         \
+  {                                                                                                                    \
+    return ::cxx_auto::cxx_hash(This);                                                                                 \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_debuggable<T>())                                           \
+  [[maybe_unused]] [[gnu::always_inline]]                                                                              \
+  static inline auto cxx_debug(T const& This) noexcept -> rust::string                                                 \
+  {                                                                                                                    \
+    return ::rust::String::lossy(::cxx_auto::cxx_debug(This));                                                         \
+  }                                                                                                                    \
+                                                                                                                       \
+  template<typename T>                                                                                                 \
+    requires(::std::same_as<T, Self> and ::cxx_auto::cxx_is_displayable<T>())                                          \
+  [[gnu::always_inline]]                                                                                               \
+  static inline auto cxx_display(T const& This) noexcept -> rust::string                                               \
+  {                                                                                                                    \
+    return ::rust::String::lossy(::cxx_auto::cxx_display(This));                                                       \
   }
 
 // Export the type record of the type bound by `CXX_AUTO_PRELUDE` in namespace

@@ -8,6 +8,7 @@ pub mod auto
 use core::pin::Pin;
 
 use auto::handle::Handle;
+use auto::throwing::Throwing;
 use auto::tracked::Tracked;
 use cxx_auto::init::InPlaceInit as _;
 
@@ -20,6 +21,16 @@ mod ffi
         type Number = crate::auto::number::Number;
         type Tracked = crate::auto::tracked::Tracked;
         type Handle = crate::auto::handle::Handle;
+        type PartialNumber = crate::auto::partial_number::PartialNumber;
+        type WeakNumber = crate::auto::weak_number::WeakNumber;
+        type LegacyNumber = crate::auto::legacy_number::LegacyNumber;
+        type Throwing = crate::auto::throwing::Throwing;
+        fn make_partial(value: f64) -> PartialNumber;
+        fn make_weak(value: i32) -> WeakNumber;
+        fn make_legacy(value: f64) -> LegacyNumber;
+        fn throwing_live() -> i32;
+        fn throwing_fail_next(failure: i32);
+        fn throwing_value(object: &Throwing) -> i32;
         fn make_number(value: i32) -> Number;
         fn tracked_live() -> i32;
         fn tracked_fail_next();
@@ -201,4 +212,198 @@ fn exercise_handle() -> Result<(), i32>
     let moved = [local];
     drop(moved);
     Ok(())
+}
+
+/// Exercise partial, weak and legacy ordering, hashing, and C++ formatting.
+///
+/// # Specification
+/// - provides: 0 when all results agree with the C++ relation and projection,
+///   otherwise the failing step's number.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: equivalent, reversed and unordered classifications must
+///   survive the typed bridge, as must the hash word and distinct formatting
+///   paths.
+/// - witness: tests/dynamic_binding.rs (loads_generated_comparison_binding).
+// FFI escape hatch: the C ABI returns i32 for the dynamic loader.
+#[unsafe(no_mangle)]
+pub extern "C" fn exercise_traits() -> i32
+{
+    use core::cmp::Ordering::Equal;
+    use core::cmp::Ordering::Greater;
+    use core::cmp::Ordering::Less;
+    use core::hash::Hash as _;
+    use core::hash::Hasher as _;
+    for (left, right, expected) in [
+        (1.0, 2.0, Some(Less)),
+        (2.0, 1.0, Some(Greater)),
+        (-0.0, 0.0, Some(Equal)),
+        (f64::NAN, 1.0, None),
+        (1.0, f64::NAN, None),
+        (f64::NAN, f64::NAN, None),
+    ] {
+        let lhs = ffi::make_partial(left);
+        let rhs = ffi::make_partial(right);
+        if lhs.partial_cmp(&rhs) != expected
+            || (lhs == rhs) != (left == right)
+            || (lhs != rhs) != (left != right)
+        {
+            return 1;
+        }
+        let lhs = ffi::make_legacy(left);
+        let rhs = ffi::make_legacy(right);
+        if lhs.partial_cmp(&rhs) != expected
+            || (lhs == rhs) != (left == right)
+            || (lhs != rhs) != (left != right)
+        {
+            return 2;
+        }
+    }
+    for (left, right, expected) in [(11, 19, Equal), (11, 20, Less), (20, 11, Greater)] {
+        let lhs = ffi::make_weak(left);
+        let rhs = ffi::make_weak(right);
+        if lhs.partial_cmp(&rhs) != Some(expected)
+            || (lhs == rhs) != (expected == Equal)
+            || (lhs != rhs) != (expected != Equal)
+        {
+            return 3;
+        }
+    }
+    for value in [0, 7, -1, i32::MIN, i32::MAX] {
+        let number = ffi::make_number(value);
+        let mut actual = std::collections::hash_map::DefaultHasher::new();
+        number.hash(&mut actual);
+        let mut expected = std::collections::hash_map::DefaultHasher::new();
+        let Ok(hash) = usize::try_from(u32::from_ne_bytes(value.to_ne_bytes()))
+        else {
+            return 4;
+        };
+        let Some(hash) = hash.checked_add(0x51)
+        else {
+            return 4;
+        };
+        hash.hash(&mut expected);
+        if actual.finish() != expected.finish() {
+            return 4;
+        }
+        if format!("{number:?}") != format!("Number({value})") {
+            return 5;
+        }
+        if format!("{number}") != value.to_string() {
+            return 6;
+        }
+    }
+    0
+}
+
+/// Exercise all catching special members, including an unknown C++ exception.
+///
+/// # Specification
+/// - ensures: failed construction creates no live object and success destroys
+///   each object once; failed assignments preserve this fixture's source and
+///   target.
+/// - provides: 0 on agreement with C++, otherwise the failing step's number.
+/// - panics: none.
+///
+/// # Adequacy
+/// - hypothesis: typed completion must preserve error messages, construction
+///   rollback, moved-from ownership and catching-assignment semantics.
+/// - witness: tests/dynamic_binding.rs (loads_generated_comparison_binding).
+// FFI escape hatch: the C ABI returns i32 for the dynamic loader.
+#[unsafe(no_mangle)]
+pub extern "C" fn exercise_throwing() -> i32
+{
+    let before = ffi::throwing_live();
+    {
+        let Ok(mut first) = Box::try_pin_init(Throwing::default_new())
+        else {
+            return 1;
+        };
+        let Ok(mut copied) = Box::try_pin_init(Throwing::copy_from(&first))
+        else {
+            return 2;
+        };
+        if ffi::throwing_value(&copied) != 7 {
+            return 3;
+        }
+        let live = ffi::throwing_live();
+        ffi::throwing_fail_next(1);
+        let failed = Box::try_pin_init(Throwing::copy_from(&first));
+        if failed
+            .as_ref()
+            .err()
+            .map(cxx_auto::init::CxxException::what)
+            != Some("special member refused")
+            || ffi::throwing_live() != live
+        {
+            return 4;
+        }
+        ffi::throwing_fail_next(1);
+        let failed = Box::try_pin_init(Throwing::move_from(first.as_mut()));
+        if failed
+            .as_ref()
+            .err()
+            .map(cxx_auto::init::CxxException::what)
+            != Some("special member refused")
+            || ffi::throwing_live() != live
+            || ffi::throwing_value(&first) != 7
+        {
+            return 5;
+        }
+        let Ok(mut moved) = Box::try_pin_init(Throwing::move_from(first.as_mut()))
+        else {
+            return 6;
+        };
+        if ffi::throwing_value(&moved) != 7 || ffi::throwing_value(&first) != -1 {
+            return 7;
+        }
+        ffi::throwing_fail_next(1);
+        let failed = first.as_mut().move_assign(moved.as_mut());
+        if failed
+            .as_ref()
+            .err()
+            .map(cxx_auto::init::CxxException::what)
+            != Some("special member refused")
+            || ffi::throwing_value(&first) != -1
+            || ffi::throwing_value(&moved) != 7
+        {
+            return 8;
+        }
+        if first.as_mut().move_assign(moved.as_mut()).is_err()
+            || ffi::throwing_value(&first) != 7
+            || ffi::throwing_value(&moved) != -1
+        {
+            return 9;
+        }
+        ffi::throwing_fail_next(1);
+        let failed = copied.as_mut().copy_assign(&moved);
+        if failed
+            .as_ref()
+            .err()
+            .map(cxx_auto::init::CxxException::what)
+            != Some("special member refused")
+            || ffi::throwing_value(&copied) != 7
+        {
+            return 10;
+        }
+        if copied.as_mut().copy_assign(&moved).is_err() || ffi::throwing_value(&copied) != -1 {
+            return 11;
+        }
+        ffi::throwing_fail_next(2);
+        let failed = Box::try_pin_init(Throwing::default_new());
+        if failed
+            .as_ref()
+            .err()
+            .map(cxx_auto::init::CxxException::what)
+            != Some("unknown C++ exception")
+            || Some(ffi::throwing_live()) != live.checked_add(1)
+        {
+            return 12;
+        }
+    }
+    if ffi::throwing_live() != before {
+        return 13;
+    }
+    0
 }

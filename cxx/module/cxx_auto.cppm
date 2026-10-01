@@ -2,22 +2,8 @@
 // any translation unit that includes `cxx-auto.hxx`, which imports it.
 module;
 
-#include <array>
-#include <compare>
-#include <concepts>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <iterator>
-#include <limits>
-#include <memory>
-#include <ostream>
-#include <ranges>
-#include <sstream>
-#include <string>
-#include <string_view>
-#include <type_traits>
-#include <utility>
+#include "../include/cxx-auto-results.hxx"
+#include "../include/cxx-auto-std.hxx"
 
 export module cxx_auto;
 
@@ -868,27 +854,35 @@ cxx_destruct(T* This) noexcept -> void
   std::destroy_at(This);
 }
 
+/// Evaluate the selected C++ equality relation.
+/// # Specification
+/// - provides: Equal when This == That, otherwise NotEqual.
+/// - panics: a throwing operator terminates at this noexcept boundary.
 template<typename T>
   requires(cxx_has_operator_equal<T>())
 [[gnu::always_inline]]
 inline auto
-cxx_operator_equal(T const& This, T const& That) noexcept -> bool
+cxx_operator_equal(T const& This, T const& That) noexcept -> Equality
 {
-  return This == That;
+  return This == That ? Equality::Equal : Equality::NotEqual;
 }
 
+/// Evaluate the selected C++ inequality relation.
+/// # Specification
+/// - provides: NotEqual when This != That, otherwise Equal.
+/// - panics: a throwing operator terminates at this noexcept boundary.
 template<typename T>
   requires(cxx_has_operator_not_equal<T>())
 [[gnu::always_inline]]
 inline auto
-cxx_operator_not_equal(T const& This, T const& That) noexcept -> bool
+cxx_operator_not_equal(T const& This, T const& That) noexcept -> Equality
 {
-  return This != That;
+  return This != That ? Equality::NotEqual : Equality::Equal;
 }
 
-/// Translate a standard three-way comparison into the Rust-facing ordering code.
+/// Classify a standard three-way comparison for the Rust bridge.
 /// # Specification
-/// - provides: -1, 0, 1 for less, equivalent, greater; int8_t maximum for unordered.
+/// - provides: Less, Equivalent, Greater, or Unordered according to C++.
 /// - panics: a throwing comparison terminates at this noexcept boundary.
 /// # Adequacy
 /// - hypothesis: weak equivalence and partial unordered results must differ from greater.
@@ -897,28 +891,29 @@ template<typename T>
   requires(detection::has_operator_three_way_comparison<T>)
 [[gnu::always_inline]]
 inline auto
-cxx_operator_three_way_comparison(T const& This, T const& That) noexcept -> int8_t
+cxx_operator_three_way_comparison(T const& This, T const& That) noexcept -> Comparison
 {
   auto result = (This <=> That);
   // Comparison categories compare with literal zero, not nullptr.
   // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr)
   if (result < 0) {
-    return -1;
+    return Comparison::Less;
   }
   // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr): zero is the ordering operand.
   if (result > 0) {
-    return 1;
+    return Comparison::Greater;
   }
   // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr): zero is the ordering operand.
   if (result == 0) {
-    return 0;
+    return Comparison::Equivalent;
   }
-  return std::numeric_limits<int8_t>::max();
+  return Comparison::Unordered;
 }
 
-/// Translate legacy less-than and equality into the Rust-facing ordering code.
+/// Classify legacy less-than and equality for the Rust bridge.
 /// # Specification
-/// - provides: -1 for This < That, 1 for That < This, 0 for equality, int8_t maximum otherwise.
+/// - provides: Less for This < That, Greater for That < This, Equivalent for
+///   equality, and Unordered otherwise.
 /// - panics: a throwing comparison terminates at this noexcept boundary.
 /// # Adequacy
 /// - hypothesis: incomparable unequal values must not be confused with greater values.
@@ -931,29 +926,37 @@ template<typename T>
   )
 [[gnu::always_inline]]
 inline auto
-cxx_operator_three_way_comparison(T const& This, T const& That) noexcept -> int8_t
+cxx_operator_three_way_comparison(T const& This, T const& That) noexcept -> Comparison
 {
   if (This < That) {
-    return -1;
+    return Comparison::Less;
   }
   if (That < This) {
-    return 1;
+    return Comparison::Greater;
   }
   if (This == That) {
-    return 0;
+    return Comparison::Equivalent;
   }
-  return std::numeric_limits<int8_t>::max();
+  return Comparison::Unordered;
 }
 
+/// Compute the selected C++ hash projection.
+/// # Specification
+/// - provides: the std::hash result as a nominal pointer-sized word.
+/// - panics: a throwing hash function terminates at this noexcept boundary.
 template<typename T>
   requires(detection::is_std_hashable<T>)
 [[gnu::always_inline]]
 inline auto
-cxx_hash(T const& This) noexcept -> size_t
+cxx_hash(T const& This) noexcept -> HashValue
 {
-  return std::hash<T>{}(This);
+  return HashValue{ std::hash<T>{}(This) };
 }
 
+/// Render the C++ debug representation.
+/// # Specification
+/// - provides: the streamed representation as an owned string.
+/// - panics: rendering or string-allocation exceptions terminate at this noexcept boundary.
 template<typename T>
   requires(detection::has_operator_ostream_left_shift<T>)
 [[gnu::always_inline]]
@@ -965,6 +968,10 @@ cxx_debug(T const& This) noexcept -> std::string
   return std::move(os).str();
 }
 
+/// Render the standard string conversion.
+/// # Specification
+/// - provides: the std::to_string representation.
+/// - panics: rendering or string-allocation exceptions terminate at this noexcept boundary.
 template<typename T>
   requires(detection::has_to_string<T>)
 [[gnu::always_inline]]
@@ -974,6 +981,10 @@ cxx_display(T const& This) noexcept -> std::string
   return std::to_string(This);
 }
 
+/// Render the type's owned-string conversion.
+/// # Specification
+/// - provides: the operator std::string representation.
+/// - panics: rendering or string-allocation exceptions terminate at this noexcept boundary.
 template<typename T>
   requires(not detection::has_to_string<T> and detection::has_operator_std_string<T>)
 [[gnu::always_inline]]
@@ -983,6 +994,10 @@ cxx_display(T const& This) noexcept -> std::string
   return This.operator std::string();
 }
 
+/// Copy the type's string-view conversion.
+/// # Specification
+/// - provides: an owned copy of the operator std::string_view representation.
+/// - panics: conversion or string-allocation exceptions terminate at this noexcept boundary.
 // FIXME: optimize this to use `&str` instead of `String`
 template<typename T>
   requires(

@@ -99,6 +99,18 @@ cxx-build = "1.0"
             failed_step, 0_i32,
             "in-place construction step {failed_step} failed"
         );
+        // SAFETY: these fixture exports have the stated C ABI and no arguments.
+        let traits: libloading::Symbol<'_, unsafe extern "C" fn() -> i32> =
+            unsafe { library.get(b"exercise_traits")? };
+        // SAFETY: exercise_throwing has the stated C ABI and no arguments.
+        let throwing: libloading::Symbol<'_, unsafe extern "C" fn() -> i32> =
+            unsafe { library.get(b"exercise_throwing")? };
+        // SAFETY: both symbols were loaded with their exact fixture signatures.
+        let trait_step = unsafe { traits() };
+        assert_eq!(trait_step, 0_i32, "generated trait semantics");
+        // SAFETY: this export takes no arguments and has its exact loaded signature.
+        let throwing_step = unsafe { throwing() };
+        assert_eq!(throwing_step, 0_i32, "catching special-member semantics");
         drop(library);
         fs::remove_dir_all(root)?;
         Ok(())

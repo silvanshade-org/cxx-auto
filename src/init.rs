@@ -555,28 +555,34 @@ impl CxxException
 
 /// Run a generated catching shim and turn its report into a `Result`.
 ///
-/// The shim returns `true` when the C++ operation completed, and otherwise
-/// `false` after writing the exception's message into the `String` it is
-/// given. Generated bindings call this; it is not meant for direct use.
+/// Generated bindings supply a shim returning the shared Completion result.
+///
+/// # Specification
+/// - requires: the shim writes the caught message into what when returning
+///   Threw.
+/// - ensures: calls the shim once and preserves its caught exception message.
+/// - provides: Ok(()) for Completed, CxxException for Threw.
+/// - fails: returns CxxException when the C++ operation threw.
+/// - panics: none.
 ///
 /// # Errors
+/// Returns CxxException containing the shim's message on Threw.
 ///
-/// Returns the caught exception when the shim reports one.
-// The `bool` is the shim's C++ return type across the bridge, which has no
-// richer shape to offer.
+/// # Adequacy
+/// - hypothesis: successful and throwing in-place construction and assignment
+///   must produce distinct results without losing the exception message.
+/// - witness: tests/dynamic_binding.rs (loads_generated_comparison_binding).
 #[cfg(feature = "alloc")]
 #[doc(hidden)]
 #[inline]
 pub fn cxx_try<F>(shim: F) -> Result<(), CxxException>
 where
-    F: FnOnce(&mut alloc::string::String) -> bool,
+    F: FnOnce(&mut alloc::string::String) -> crate::bridge::Completion,
 {
     let mut what = alloc::string::String::new();
-    if shim(&mut what) {
-        Ok(())
-    }
-    else {
-        Err(CxxException::new(what))
+    match shim(&mut what) {
+        | crate::bridge::Completion::Completed => Ok(()),
+        | crate::bridge::Completion::Threw => Err(CxxException::new(what)),
     }
 }
 
