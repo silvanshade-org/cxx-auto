@@ -265,14 +265,14 @@ main() -> int
   constexpr WeaklyOrdered less{ 1 };
   constexpr WeaklyOrdered greater{ 2 };
   if (
-    cxx_auto::cxx_operator_three_way_comparison(less, greater) != -1
-    || cxx_auto::cxx_operator_three_way_comparison(greater, less) != 1
-    || cxx_auto::cxx_operator_three_way_comparison(less, less) != 0) {
+    cxx_auto::cxx_operator_three_way_comparison(less, greater) != cxx_auto::Comparison::Less
+    || cxx_auto::cxx_operator_three_way_comparison(greater, less) != cxx_auto::Comparison::Greater
+    || cxx_auto::cxx_operator_three_way_comparison(less, less) != cxx_auto::Comparison::Equivalent) {
     return EXIT_FAILURE;
   }
 
   double const nan = std::numeric_limits<double>::quiet_NaN();
-  if (cxx_auto::cxx_operator_three_way_comparison(nan, 1.0) != std::numeric_limits<std::int8_t>::max()) {
+  if (cxx_auto::cxx_operator_three_way_comparison(nan, 1.0) != cxx_auto::Comparison::Unordered) {
     return EXIT_FAILURE;
   }
 
@@ -280,16 +280,18 @@ main() -> int
   LegacyPartial const one{ 1.0 };
   LegacyPartial const two{ 2.0 };
   if (
-    cxx_auto::cxx_operator_three_way_comparison(unordered, one) != std::numeric_limits<std::int8_t>::max()
-    || cxx_auto::cxx_operator_three_way_comparison(one, two) != -1
-    || cxx_auto::cxx_operator_three_way_comparison(two, one) != 1
-    || cxx_auto::cxx_operator_three_way_comparison(one, one) != 0) {
+    cxx_auto::cxx_operator_three_way_comparison(unordered, one) != cxx_auto::Comparison::Unordered
+    || cxx_auto::cxx_operator_three_way_comparison(one, two) != cxx_auto::Comparison::Less
+    || cxx_auto::cxx_operator_three_way_comparison(two, one) != cxx_auto::Comparison::Greater
+    || cxx_auto::cxx_operator_three_way_comparison(one, one) != cxx_auto::Comparison::Equivalent) {
     return EXIT_FAILURE;
   }
 
   fixture::Value const value{ 3 };
   fixture::Value const other{ 4 };
-  if (!fixture::proxy::cxx_operator_equal(value, value) || fixture::proxy::cxx_operator_equal(value, other)) {
+  if (
+    fixture::proxy::cxx_operator_equal(value, value) != cxx_auto::Equality::Equal
+    || fixture::proxy::cxx_operator_equal(value, other) != cxx_auto::Equality::NotEqual) {
     return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;

@@ -1,5 +1,6 @@
 #pragma once
 
+// Include cxx_auto first so later standard headers exercise the GCC import boundary.
 #include "cxx-auto/cxx/include/cxx-auto.hxx"
 #include "number.hxx"
 #include "objects.hxx"
@@ -21,3 +22,19 @@ CXX_AUTO_PRELUDE(Tracked, demo::Tracked)
 namespace demo::handle_proxy {
 CXX_AUTO_PRELUDE(Handle, demo::Handle)
 } // namespace demo::handle_proxy
+
+namespace demo::partial_proxy {
+CXX_AUTO_PRELUDE(PartialNumber, demo::PartialNumber)
+}
+
+namespace demo::weak_proxy {
+CXX_AUTO_PRELUDE(WeakNumber, demo::WeakNumber)
+}
+
+namespace demo::legacy_proxy {
+CXX_AUTO_PRELUDE(LegacyNumber, demo::LegacyNumber)
+}
+
+namespace demo::throwing_proxy {
+CXX_AUTO_PRELUDE(Throwing, demo::Throwing)
+}

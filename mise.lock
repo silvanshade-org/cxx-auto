@@ -890,6 +890,11 @@ checksum = "sha256:731e043390c9457299484d39e427221fc868a9249540a498a5a4f6456c774
 url = "https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_7.conda"
 checksum = "sha256:ca7daae4f218a11fab82cc2857f0ea518ec3f46acec60490485347a4c22c6b3e"
 
+[[tools."cargo:cxxbridge-cmd"]]
+version = "1.0.202"
+backend = "cargo:cxxbridge-cmd"
+specifiers = ["1.0.202"]
+
 [[tools."cargo:sizelint"]]
 version = "0.1.5"
 backend = "cargo:sizelint"

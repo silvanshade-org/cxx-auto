@@ -44,6 +44,8 @@ includes = [".config/mise/tasks"]
 "conda:clang" = "22.1.8"
 "conda:clang-format" = "22.1.8"
 "conda:clang-tools" = "22.1.8"
+# Match Cargo.lock's CXX version when provisioning rust/cxx.h for native analysis.
+"cargo:cxxbridge-cmd" = "1.0.202"
 "github:aubepkg/aube" = "2.2.4"
 "github:cli/cli" = "2.100.0"
 # Retain across languages: project setup initializes the source index.

@@ -11,14 +11,16 @@ run = "treefmt --fail-on-change"
 
 ["lint:cpp"]
 description = "Analyze the cxx_auto module and the C++ translation units that import it"
-run = """
-cargo build --quiet
-flags="-std=c++26 -resource-dir=$(clang -print-resource-dir) -fno-exceptions -fno-rtti -Icxx/include -Itarget/cxxbridge"
-mkdir -p target/cxx-auto-tidy
-clang --gcc-toolchain=/usr $flags --precompile -x c++-module cxx/module/cxx_auto.cppm -o target/cxx-auto-tidy/cxx_auto.pcm
+run = '''
+set -eu
+native_dir="${CARGO_TARGET_DIR:-target}/cxx-auto-tidy"
+mkdir -p "$native_dir/include/rust"
+cxxbridge --header --output "$native_dir/include/rust/cxx.h"
+flags="-std=c++26 -resource-dir=$(clang -print-resource-dir) -fno-exceptions -fno-rtti -Icxx/include -I$native_dir/include"
+ccache clang --gcc-toolchain=/usr $flags -MD -MF "$native_dir/cxx_auto.d" --precompile -x c++-module cxx/module/cxx_auto.cppm -o "$native_dir/cxx_auto.pcm"
 clang-tidy --quiet --warnings-as-errors='*' cxx/module/cxx_auto.cppm -- $flags -x c++-module
-clang-tidy --quiet --warnings-as-errors='*' cxx/tests/probes.cxx cxx/lib/cmake.cxx -- $flags -fmodule-file=cxx_auto=target/cxx-auto-tidy/cxx_auto.pcm
-"""
+clang-tidy --quiet --warnings-as-errors='*' cxx/tests/probes.cxx cxx/lib/cmake.cxx -- $flags "-fmodule-file=cxx_auto=$native_dir/cxx_auto.pcm"
+'''
 
 [changelog]
 description = "Render committed release history in a release PR only"

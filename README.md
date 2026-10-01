@@ -50,7 +50,15 @@ An operation C++ declares `noexcept` is infallible: its initializer has error `I
 
 Run an initializer in an owner from `cxx_auto::init`: `Box::pin_init`, `Rc::pin_init` or `Arc::pin_init` (and their `try_` forms, through the `InPlaceInit` trait), or a stack slot with `cxx_auto::stack_pin_init!(let x = init)` / `cxx_auto::stack_try_pin_init!(let x = init)`. The owner destroys the object when it ends, as for any Rust value. A failed initializer leaves nothing constructed.
 
-The [dynamic binding fixture](tests/fixtures/dynamic/) is one crate with three C++ types: a trivially movable `Number`, a final `Tracked` object that aborts if it is ever found away from the address it was built at, and a `Handle` declared relocatable. Its [integration test](tests/dynamic_binding.rs) compiles the crate as a shared library, loads it through `libloading`, calls the generated equality and ordering across equal, reversed, and integer-boundary inputs, and then constructs, copies, moves, assigns and destroys `Tracked` and `Handle` objects in heap and stack places, including constructors and assignments that throw.
+The [dynamic binding fixture](tests/fixtures/dynamic/) binds seven C++ types. Its [integration test](tests/dynamic_binding.rs) loads a shared library and exercises strong, weak, partial and legacy comparison, including reversed inputs, integer boundaries, bucket equivalence and unordered NaN. It checks the native hash projection, C++ Debug and Display strings, pinned and relocatable ownership, every catching special member, standard and unknown exception messages, and construction rollback and destruction counts.
+
+### Generated specifications and bridge results
+
+Generated operations carry their specifications, including construction in the owner's storage, exception results, formatter errors and delegated sink or Hasher panics. Native noexcept boundaries terminate if the selected C++ operation throws; throwing operations also terminate when exception support is disabled. Unsafe implementations document layout and lifetime invariants; the generated CXX module documents the foreign block's safety obligations. Destruction takes an explicit pointer to the Rust-owned object.
+
+Every generated bridge uses the shared types in `cxx_auto::bridge`: `Completion` for catching operations, `Equality` for equality and inequality, `Comparison` for less, equivalent, greater or unordered results, and `HashValue` for the native hash word. Their Rust representations must match `cxx-auto-results.hxx`. C++ enum declarations set native discriminants; static assertions check only size, alignment and trivial copyability. Agreement with Rust discriminants and valid returned variants remain documented unsafe co-versioning invariants. Generated Rust traits translate these nominal results into the corresponding standard-library semantics.
+
+The module’s global fragment and the macro header share one standard-library prelude. The macro header includes that prelude before importing the module, so GCC consumers can include their own standard headers afterwards without redeclaring imported library implementation types.
 
 ## Verify
 

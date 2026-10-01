@@ -10,6 +10,8 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+/// Shared nominal results for generated CXX bridges.
+pub mod bridge;
 /// Emit Rust structs and their CXX bridge implementations.
 mod cxx_auto_artifact_info;
 /// Name the fallible artifact-generation boundary.
